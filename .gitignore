@@ -1,0 +1,11 @@
+# IDE
+.vscode/
+
+# Common Python Ignores
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+build/
+*.egg-info
+
+.coverage
