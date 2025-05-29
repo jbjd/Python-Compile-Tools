@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from personal_compile_utils.validation import is_root
+from personal_compile_tools.validation import is_root
 
-_MODULE_NAME: str = "personal_compile_utils.validation"
+_MODULE_NAME: str = "personal_compile_tools.validation"
 
 _is_root_cases: list = [
     ("posix", 0, True),

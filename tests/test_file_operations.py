@@ -1,5 +1,5 @@
 from unittest.mock import patch
-from personal_compile_utils.file_operations import (
+from personal_compile_tools.file_operations import (
     copy_file,
     copy_folder,
     delete_file,
@@ -8,7 +8,7 @@ from personal_compile_utils.file_operations import (
     delete_folders,
 )
 
-_MODULE_NAME: str = "personal_compile_utils.file_operations"
+_MODULE_NAME: str = "personal_compile_tools.file_operations"
 
 
 def test_copy_file():
