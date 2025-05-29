@@ -1,3 +1,3 @@
 #!/bin/sh
 
-pytest --cov=personal_compile_utils --cov-report term-missing
+pytest --cov=personal_compile_tools --cov-report term-missing
