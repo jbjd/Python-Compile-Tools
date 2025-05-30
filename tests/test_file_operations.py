@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 from personal_compile_tools.file_operations import (
     copy_file,
     copy_folder,
@@ -6,7 +7,9 @@ from personal_compile_tools.file_operations import (
     delete_files,
     delete_folder,
     delete_folders,
+    get_folder_size,
 )
+from tests.conftest import EXAMPLE_FOLDER
 
 _MODULE_NAME: str = "personal_compile_tools.file_operations"
 
@@ -65,3 +68,10 @@ def test_delete_folders():
         assert mock_delete.call_args_list[0].kwargs == {"ignore_errors": True}
         assert mock_delete.call_args_list[1].args == ("bar",)
         assert mock_delete.call_args_list[1].kwargs == {"ignore_errors": True}
+
+
+def test_get_folder_size():
+    """Should get full byte size of folder"""
+    EXPECTED_BYTE_SIZE: int = 43
+
+    assert get_folder_size(EXAMPLE_FOLDER) == EXPECTED_BYTE_SIZE

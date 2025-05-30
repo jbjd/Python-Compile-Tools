@@ -3,6 +3,7 @@ condensed into one file"""
 
 import os
 import shutil
+from glob import glob
 from typing import Iterable
 
 
@@ -35,3 +36,11 @@ def delete_folder(folder: str) -> None:
 def delete_folders(folders: Iterable[str]) -> None:
     for folder in folders:
         shutil.rmtree(folder, ignore_errors=True)
+
+
+def get_folder_size(folder: str) -> int:
+    return sum(
+        os.stat(p).st_size
+        for p in glob(f"{folder}/**/*", recursive=True)
+        if os.path.isfile(p)
+    )

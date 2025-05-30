@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from personal_compile_tools.validation import is_root
 
 _MODULE_NAME: str = "personal_compile_tools.validation"
