@@ -7,6 +7,16 @@ from importlib.metadata import version as get_module_version
 
 _VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
 
+_VALID_OPERATOR_RE: str = f"(?:{'|'.join(_VALID_OPERATORS)})"
+_PEP440_RE: str = (
+    r"[0-9]+(?:\.[0-9]+)*(?:(?:a|b|c|rc)[0-9]+)?(?:\.post[0-9]+)?(?:\.dev[0-9]+)?"
+)
+_PEP440_WITH_OPERATOR_RE: str = _VALID_OPERATOR_RE + _PEP440_RE
+_REQUIREMENT_RE: str = (
+    r"^([A-Z0-9]|[A-Z0-9][A-Z0-9\._-]*[A-Z0-9])((" + _PEP440_WITH_OPERATOR_RE + r")+)$"
+)
+_RULES_RE: str = f"^(?:({_PEP440_WITH_OPERATOR_RE})+)$"
+
 
 class VersionSegmentTypes(StrEnum):
     DEV = ".dev"
@@ -48,7 +58,7 @@ class VersionRule:
         self.version: str = version
 
 
-class Dependency:
+class Requirements:
     """Represents a dependency of a python module"""
 
     __slots__ = ("name", "version_rules")
@@ -66,7 +76,7 @@ class Dependency:
 
 def parse_requirements_file(
     file_path: str, encoding: str = "utf-8"
-) -> list[Dependency]:
+) -> list[Requirements]:
     """Given a requirements file, returns a list of
     objects representing the dependencies"""
     with open(file_path, "r", encoding=encoding) as fp:
@@ -75,7 +85,7 @@ def parse_requirements_file(
     return parse_requirments(file_contents)
 
 
-def parse_requirments(requirements: str) -> list[Dependency]:
+def parse_requirments(requirements: str) -> list[Requirements]:
     """Given contents of a requirements file, returns a list of
     objects representing the dependencies"""
 
@@ -89,12 +99,30 @@ def parse_requirments(requirements: str) -> list[Dependency]:
     return []
 
 
+def parse_requirement(requirement: str) -> Requirements:
+    """Given a single line of a requirements file, returns
+    data parsed into a Requirements object"""
+    requirement = re.sub(r"\s+", "", requirement)
+
+    search_result = re.search(_REQUIREMENT_RE, requirement, re.IGNORECASE)
+
+    if search_result is None:
+        raise ValueError(f"Invalid requirment {requirement}")
+
+    name: str = search_result.group(1)
+    version_rules: str = search_result.group(2)
+
+    search_result = re.findall(_RULES_RE, version_rules)
+
+    return search_result
+
+
 def version_is_pep440_compliant(version: str) -> bool:
     """Verifys version against pattern found here:
     https://peps.python.org/pep-0440/"""
 
-    version_re: str = (
-        r"[0-9]+(\.[0-9]+)*((a|b|c|rc)[0-9]+)?(\.post[0-9]+)?(\.dev[0-9]+)?"
-    )
+    return re.match(f"^{_PEP440_RE}$", version) is not None
 
-    return re.match(version_re, version) is not None
+
+test = parse_requirement("Asdg>=6.8.0<=7.0.0")
+print(test)
