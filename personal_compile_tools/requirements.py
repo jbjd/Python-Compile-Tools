@@ -30,7 +30,6 @@ class Version:
 
     __slots__ = (
         "dev_segment",
-        "operator",
         "post_segment",
         "pre_segment",
         "raw_version",
@@ -73,7 +72,11 @@ class VersionRule:
         if operator not in _VALID_OPERATORS:
             raise ValueError(f"Invalid operator {operator}")
 
+        self.operator: str = operator
         self.version = Version(version)
+
+    def __eq__(self, other: "VersionRule") -> bool:
+        return self.operator == other.operator and self.version == other.version
 
     def version_is_compliant(self, test_version_raw: str) -> bool:
         """Returns True if provided version
@@ -96,6 +99,16 @@ class Requirement:
     def __init__(self, name: str, version_rules: list[VersionRule]) -> None:
         self.name: str = name
         self.version_rules: list[VersionRule] = version_rules
+
+    def __eq__(self, other: "Requirement") -> bool:
+        return (
+            self.name == other.name
+            and len(self.version_rules) == len(other.version_rules)
+            and all(
+                rule1 == rule2
+                for rule1, rule2 in zip(self.version_rules, other.version_rules)
+            )
+        )
 
     def matches_installed_version(self) -> bool:
         """Returns True when this dependency's version rules match the installed

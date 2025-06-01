@@ -1,6 +1,10 @@
 import os
 
-from personal_compile_tools.requirements import Requirement, parse_requirements_file
+from personal_compile_tools.requirements import (
+    Requirement,
+    parse_requirements_file,
+    VersionRule,
+)
 from tests.conftest import EXAMPLE_FOLDER
 
 _MODULE_NAME: str = "personal_compile_tools.requitements"
@@ -11,15 +15,10 @@ def test_parse_requirements_file():
         os.path.join(EXAMPLE_FOLDER, "requirements.txt")
     )
 
-    assert len(requirements) == 1
+    assert len(requirements) == 2
 
-    requirement = requirements[0]
+    assert requirements[0] == Requirement(
+        "some_module", [VersionRule(">=", "1.2.3"), VersionRule("<=", "2.0.0")]
+    )
 
-    assert requirement.name == "some_module"
-    assert len(requirement.version_rules) == 2
-
-    assert requirement.version_rules[0].operator == ">="
-    assert requirement.version_rules[0].raw_version == "1.2.3"
-
-    assert requirement.version_rules[1].operator == "<="
-    assert requirement.version_rules[1].raw_version == "2.0.0"
+    assert requirements[1] == Requirement("other", [VersionRule("===", "7.0.8")])
