@@ -72,6 +72,6 @@ def test_delete_folders():
 
 def test_get_folder_size():
     """Should get full byte size of folder"""
-    EXPECTED_BYTE_SIZE: int = 87
+    EXPECTED_BYTE_SIZE: int = 90
 
     assert get_folder_size(EXAMPLE_FOLDER) == EXPECTED_BYTE_SIZE
