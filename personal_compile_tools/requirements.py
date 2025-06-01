@@ -140,8 +140,6 @@ def parse_requirments(raw_requirements: str) -> list[Requirement]:
     # regex slipt on \n without previous \
     raw_requirements = raw_requirements.strip()
     for line in re.split(r"(?<=[^\\])\s*\n", raw_requirements):
-        line = re.sub(r"\s+", " ", line)
-
         # For now, throw out env marker
         line = line.split(";")[0]
 
@@ -154,7 +152,7 @@ def parse_requirments(raw_requirements: str) -> list[Requirement]:
 def parse_requirement(requirement: str) -> Requirement:
     """Given a single line of a requirements file, returns
     data parsed into a Requirements object"""
-    requirement = re.sub(r"\s+", "", requirement)
+    requirement = re.sub(r"(\s+|\\\s*\n)", "", requirement)
 
     search_result = re.search(_REQUIREMENT_RE, requirement, re.IGNORECASE)
 

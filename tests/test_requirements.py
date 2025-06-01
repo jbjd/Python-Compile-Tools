@@ -11,6 +11,8 @@ _MODULE_NAME: str = "personal_compile_tools.requitements"
 
 
 def test_parse_requirements_file():
+    """Should read a requirements file, handle backslash, and correctly parse it"""
+
     requirements: list[Requirement] = parse_requirements_file(
         os.path.join(EXAMPLE_FOLDER, "requirements.txt")
     )
@@ -22,3 +24,7 @@ def test_parse_requirements_file():
     )
 
     assert requirements[1] == Requirement("other", [VersionRule("===", "7.0.8")])
+
+
+# def test_parse_requirement():
+#     """Should parse a single line of """
