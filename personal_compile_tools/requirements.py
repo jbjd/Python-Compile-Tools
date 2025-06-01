@@ -1,9 +1,8 @@
 """Classes and functions to help analyze requirements files.
 https://peps.python.org/pep-0508/"""
 
-from enum import StrEnum
 import re
-from importlib.metadata import version as get_module_version
+from typing import NoReturn
 
 _VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
 
@@ -25,29 +24,9 @@ _REQUIREMENT_RE: str = (
 )
 
 
-class VersionSegmentTypes(StrEnum):
-    DEV = ".dev"
-    ALPHA = "a"
-    BETA = "b"
-    CANDIDATE = "rc"
-    POST = ".post"
-
-
-class VersionSegment:
-    """Represents a version segment as specified in pep440"""
-
-    __slots__ = ("segment", "version")
-
-    def __init__(self, version: int, segment: VersionSegmentTypes) -> None:
-        if version < 0:
-            raise ValueError(f"Version segment {segment}{version} cannot be negative")
-
-        self.version: int = version
-        self.segment: VersionSegmentTypes = segment
-
-
-class VersionRule:
-    """Rule that a package installer must follow e.x. >=1.0.0"""
+class Version:
+    """Represents a version as specified in pep440
+    https://peps.python.org/pep-0440/"""
 
     __slots__ = (
         "dev_segment",
@@ -58,37 +37,55 @@ class VersionRule:
         "release_version",
     )
 
-    def __init__(self, operator: str, version: str) -> None:
-        if operator not in _VALID_OPERATORS:
-            raise ValueError(f"Invalid operator {operator}")
-
+    def __init__(self, version: str) -> None:
         version = normalize_version(version)
         test = re.search(_PEP440_RE, version)
 
         if test is None:
-            raise ValueError(f"Invalid version {version}")
+            self._raise_invalid_version(version)
 
         # TODO: Handle segments
         release_version, pre_segment, post_segment, dev_segment = test.groups()
 
         if release_version is None:
-            raise ValueError(f"Invalid version {version}")
+            self._raise_invalid_version(version)
 
-        self.operator: str = operator
         self.release_version: str = release_version
         self.raw_version: str = version
+        self.pre_segment: str | None = None
+        self.post_segment: str | None = None
+        self.dev_segment: str | None = None
 
-    def installed_version_is_compliant(self, module_name: str) -> bool:
-        """Returns True if version installed in this python interpreter
+    def __eq__(self, other: "Version") -> bool:
+        return self.raw_version == other.raw_version
+
+    @staticmethod
+    def _raise_invalid_version(version: str) -> NoReturn:
+        raise ValueError(f"Invalid version {version}")
+
+
+class VersionRule:
+    """Rule that a package installer must follow e.x. >=1.0.0"""
+
+    __slots__ = ("operator", "version")
+
+    def __init__(self, operator: str, version: str) -> None:
+        if operator not in _VALID_OPERATORS:
+            raise ValueError(f"Invalid operator {operator}")
+
+        self.version = Version(version)
+
+    def version_is_compliant(self, test_version_raw: str) -> bool:
+        """Returns True if provided version
         is compliant with the rule this object represents"""
-        installed_version: str = get_module_version(module_name)
+        test_version = Version(test_version_raw)
 
         # TODO: Handle all
         match self.operator:
             case "!=":
-                return installed_version != self.raw_version
+                return test_version != self.version.raw_version
             case _:
-                return installed_version == self.raw_version
+                return test_version == self.version.raw_version
 
 
 class Requirement:
@@ -166,15 +163,15 @@ def parse_requirement(requirement: str) -> Requirement:
     return Requirement(name, version_rules)
 
 
-def version_is_pep440_compliant(version: str) -> bool:
-    """Verifys version against pattern found here:
-    https://peps.python.org/pep-0440/"""
-
-    return re.match(f"^{_PEP440_RE_NO_CAP}$", version) is not None
-
-
 def normalize_version(version: str) -> str:
     """Normalizes version with rules found here:
     https://peps.python.org/pep-0440/"""
     # TODO: this is not complete
     return version.replace("alpha", "a", 1).replace("beta", "b", 1)
+
+
+def version_is_pep440_compliant(version: str) -> bool:
+    """Verifys version against pattern found here:
+    https://peps.python.org/pep-0440/"""
+
+    return re.match(f"^{_PEP440_RE_NO_CAP}$", normalize_version(version)) is not None
