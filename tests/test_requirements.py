@@ -1,13 +1,14 @@
 import os
 
+import pytest
+
 from personal_compile_tools.requirements import (
     Requirement,
+    parse_requirement,
     parse_requirements_file,
     VersionRule,
 )
 from tests.conftest import EXAMPLE_FOLDER
-
-_MODULE_NAME: str = "personal_compile_tools.requitements"
 
 
 def test_parse_requirements_file():
@@ -26,5 +27,11 @@ def test_parse_requirements_file():
     assert requirements[1] == Requirement("other", [VersionRule("===", "7.0.8")])
 
 
-# def test_parse_requirement():
-#     """Should parse a single line of """
+@pytest.mark.parametrize(
+    "bad_input", ["-cannot-start-with-dash==1.0.0", "not_pep440==1.0.4-snapshot"]
+)
+def test_parse_requirement_bad_input(bad_input: str):
+    """Should raise ValueError due to invalid requirement entry"""
+
+    with pytest.raises(ValueError):
+        parse_requirement(bad_input)
