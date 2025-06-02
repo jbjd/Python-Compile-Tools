@@ -8,19 +8,13 @@ _VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
-_PEP440_RE_NO_CAP: str = (
-    r"[0-9]+(?:\.[0-9]+)*(?:(?:a|b|rc)[0-9]+)?(?:\.post[0-9]+)?(?:\.dev[0-9]+)?"
-)
 _PEP440_RE: str = (
-    r"([0-9]+(?:\.[0-9]+)*)((?:a|b|rc)[0-9]+)?(\.post[0-9]+)?(\.dev[0-9]+)?"
+    r"^([0-9]+(?:\.[0-9]+)*)((?:a|b|rc)[0-9]+)?(\.post[0-9]+)?(\.dev[0-9]+)?$"
 )
 
-_PEP440_WITH_OPERATOR_RE: str = f"({_VALID_OPERATOR_RE})({_PEP440_RE_NO_CAP})"
+_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-zA-Z0-9\.\-_]+)"
 _REQUIREMENT_RE: str = (
-    r"^([A-Z0-9]|[A-Z0-9][A-Z0-9\._-]*[A-Z0-9])(("
-    + f"(?:{_VALID_OPERATOR_RE})"
-    + _PEP440_RE_NO_CAP
-    + r")+)$"
+    r"^([A-Z0-9]|[A-Z0-9][A-Z0-9\._-]*[A-Z0-9])((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
 
 
@@ -38,25 +32,38 @@ class Version:
 
     def __init__(self, version: str) -> None:
         version = normalize_version(version)
-        test = re.search(_PEP440_RE, version)
+        version_search = re.search(_PEP440_RE, version)
 
-        if test is None:
+        if version_search is None:
             self._raise_invalid_version(version)
 
-        # TODO: Handle segments
-        release_version, pre_segment, post_segment, dev_segment = test.groups()
+        release_version, pre_segment, post_segment, dev_segment = (
+            version_search.groups()
+        )
 
         if release_version is None:
             self._raise_invalid_version(version)
 
-        self.release_version: str = release_version
-        self.raw_version: str = version
-        self.pre_segment: str | None = None
-        self.post_segment: str | None = None
-        self.dev_segment: str | None = None
+        self.release_version: tuple[int, ...] = tuple(
+            int(i) for i in release_version.split(".")
+        )
+        self.pre_segment: int | None = (
+            int(pre_segment.lstrip("abrc")) if pre_segment is not None else None
+        )
+        self.post_segment: int | None = (
+            int(post_segment.lstrip(".post")) if post_segment is not None else None
+        )
+        self.dev_segment: int | None = (
+            int(dev_segment.lstrip(".dev")) if dev_segment is not None else None
+        )
 
     def __eq__(self, other: "Version") -> bool:
-        return self.raw_version == other.raw_version
+        return (
+            self.release_version == other.release_version
+            and self.pre_segment == other.post_segment
+            and self.post_segment == other.post_segment
+            and self.dev_segment == other.dev_segment
+        )
 
     @staticmethod
     def _raise_invalid_version(version: str) -> NoReturn:
@@ -75,6 +82,12 @@ class VersionRule:
         self.operator: str = operator
         self.version = Version(version)
 
+        if self.operator == "~=" and len(self.version.release_version) < 2:
+            raise ValueError(
+                "Use of '~=' operator requires release version to have "
+                f"more than one segment, {self.version.release_version} has only one"
+            )
+
     def __eq__(self, other: "VersionRule") -> bool:
         return self.operator == other.operator and self.version == other.version
 
@@ -86,9 +99,9 @@ class VersionRule:
         # TODO: Handle all
         match self.operator:
             case "!=":
-                return test_version != self.version.raw_version
+                return test_version != self.version
             case _:
-                return test_version == self.version.raw_version
+                return test_version == self.version
 
 
 class Requirement:
@@ -163,7 +176,7 @@ def parse_requirement(requirement: str) -> Requirement:
     version_rules_unparsed: str = search_result.group(2)
 
     split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-        _PEP440_WITH_OPERATOR_RE, version_rules_unparsed
+        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed
     )
 
     version_rules: list[VersionRule] = [
@@ -185,4 +198,4 @@ def version_is_pep440_compliant(version: str) -> bool:
     """Verifys version against pattern found here:
     https://peps.python.org/pep-0440/"""
 
-    return re.match(f"^{_PEP440_RE_NO_CAP}$", normalize_version(version)) is not None
+    return re.match(f"^{_PEP440_RE}$", normalize_version(version)) is not None
