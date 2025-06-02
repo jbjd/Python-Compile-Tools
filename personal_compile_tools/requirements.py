@@ -2,9 +2,10 @@
 https://peps.python.org/pep-0508/"""
 
 import re
+from enum import IntEnum
 from typing import NoReturn
 
-_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
+_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~="]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
@@ -18,6 +19,13 @@ _REQUIREMENT_RE: str = (
 )
 
 
+class PreSegmentType(IntEnum):
+    ALPHA = 0
+    BETA = 1
+    CANDIDATE = 2
+    NONE = 3
+
+
 class Version:
     """Represents a version as specified in pep440
     https://peps.python.org/pep-0440/"""
@@ -26,11 +34,12 @@ class Version:
         "dev_segment",
         "post_segment",
         "pre_segment",
+        "pre_segment_type",
         "raw_version",
         "release_version",
     )
 
-    def __init__(self, version: str) -> None:
+    def __init__(self, version: str, keep_trailing_zeros: bool = False) -> None:
         version = normalize_version(version)
         version_search = re.search(_PEP440_RE, version)
 
@@ -47,23 +56,65 @@ class Version:
         self.release_version: tuple[int, ...] = tuple(
             int(i) for i in release_version.split(".")
         )
-        self.pre_segment: int | None = (
-            int(pre_segment.lstrip("abrc")) if pre_segment is not None else None
+
+        if not keep_trailing_zeros:
+            while len(self.release_version) > 1 and self.release_version[-1] == 0:
+                self.release_version = self.release_version[:-1]
+
+        self.pre_segment_type: PreSegmentType
+        if pre_segment is None:
+            self.pre_segment_type = PreSegmentType.NONE
+        elif pre_segment.startswith("a"):
+            self.pre_segment_type = PreSegmentType.ALPHA
+        elif pre_segment.startswith("b"):
+            self.pre_segment_type = PreSegmentType.BETA
+        else:
+            self.pre_segment_type = PreSegmentType.CANDIDATE
+
+        # Set to -1 by default so comparisons are easier
+        self.pre_segment: int = (
+            int(pre_segment.lstrip("abrc")) if pre_segment is not None else -1
         )
-        self.post_segment: int | None = (
-            int(post_segment.lstrip(".post")) if post_segment is not None else None
+        self.post_segment: int = (
+            int(post_segment.lstrip(".post")) if post_segment is not None else -1
         )
-        self.dev_segment: int | None = (
-            int(dev_segment.lstrip(".dev")) if dev_segment is not None else None
+        self.dev_segment: int = (
+            int(dev_segment.lstrip(".dev")) if dev_segment is not None else -1
         )
 
     def __eq__(self, other: "Version") -> bool:
         return (
             self.release_version == other.release_version
-            and self.pre_segment == other.post_segment
+            and self.pre_segment == other.pre_segment
+            and self.pre_segment_type == other.pre_segment_type
             and self.post_segment == other.post_segment
             and self.dev_segment == other.dev_segment
         )
+
+    def __gt__(self, other: "Version") -> bool:
+        if self.release_version != other.release_version:
+            return self.release_version > other.release_version
+
+        if self.pre_segment_type != other.pre_segment_type:
+            return self.pre_segment_type > other.pre_segment_type
+
+        if self.pre_segment != other.pre_segment:
+            return self.pre_segment > other.pre_segment
+
+        if self.post_segment != other.post_segment:
+            return self.post_segment > other.post_segment
+
+        # Weird edge case: presence of dev segment implies and earlier version
+        # So consider version greater only if its present. If either version
+        # was missing the dev segment, we need to consider it "greater"
+        # for having a lesser value
+        if self.dev_segment >= 0 and other.dev_segment >= 0:
+            return self.dev_segment > other.dev_segment
+        else:
+            return self.dev_segment < other.dev_segment
+
+    def __ge__(self, other: "Version") -> bool:
+        return self > other or self == other
 
     @staticmethod
     def _raise_invalid_version(version: str) -> NoReturn:
@@ -73,14 +124,23 @@ class Version:
 class VersionRule:
     """Rule that a package installer must follow e.x. >=1.0.0"""
 
-    __slots__ = ("operator", "version")
+    __slots__ = ("fuzzy_match", "operator", "version")
 
     def __init__(self, operator: str, version: str) -> None:
         if operator not in _VALID_OPERATORS:
             raise ValueError(f"Invalid operator {operator}")
 
+        if version.endswith(".*"):
+            version = version[:-2]
+            self.fuzzy_match = True
+        else:
+            self.fuzzy_match = False
+
+        if self.fuzzy_match and operator not in ("==", "!="):
+            raise ValueError(".* can only be used with == or != operators")
+
         self.operator: str = operator
-        self.version = Version(version)
+        self.version = Version(version, keep_trailing_zeros=self.fuzzy_match)
 
         if self.operator == "~=" and len(self.version.release_version) < 2:
             raise ValueError(
@@ -89,19 +149,48 @@ class VersionRule:
             )
 
     def __eq__(self, other: "VersionRule") -> bool:
-        return self.operator == other.operator and self.version == other.version
+        return (
+            self.operator == other.operator
+            and self.version == other.version
+            and self.fuzzy_match == other.fuzzy_match
+        )
 
-    def version_is_compliant(self, test_version_raw: str) -> bool:
+    def version_is_compliant(self, installed_version_raw: str) -> bool:
         """Returns True if provided version
         is compliant with the rule this object represents"""
-        test_version = Version(test_version_raw)
+        installed_version = Version(installed_version_raw)
 
         # TODO: Handle all
         match self.operator:
+            case "~=":
+                # ~=1.4.5 is same as >=1.4.5,== 1.4.*
+                compare_up_to: int = len(self.version.release_version) - 1
+
+                return self._compare_up_to_len(installed_version, compare_up_to) and (
+                    installed_version >= self.version
+                )
+            case ">":
+                return installed_version > self.version
             case "!=":
-                return test_version != self.version
+                return not self._compare_versions_with_fuzzy_match(installed_version)
             case _:
-                return test_version == self.version
+                return self._compare_versions_with_fuzzy_match(installed_version)
+
+    def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
+
+        # If fuzzy is true, only release version will be set
+        if self.fuzzy_match:
+            compare_up_to: int = len(self.version.release_version)
+
+            return self._compare_up_to_len(other, compare_up_to)
+
+        return self.version == other
+
+    def _compare_up_to_len(self, other: Version, compare_up_to: int) -> bool:
+        return (
+            self.version.release_version[:compare_up_to]
+            == other.release_version[:compare_up_to]
+        )
 
 
 class Requirement:
@@ -191,7 +280,12 @@ def normalize_version(version: str) -> str:
     """Normalizes version with rules found here:
     https://peps.python.org/pep-0440/"""
     # TODO: this is not complete
-    return version.replace("alpha", "a", 1).replace("beta", "b", 1)
+
+    # Normalize zeros
+    version = re.sub(r"\.00+", ".0", version)
+    return (
+        version.replace("alpha", "a", 1).replace("beta", "b", 1).replace("c", "rc", 1)
+    )
 
 
 def version_is_pep440_compliant(version: str) -> bool:
