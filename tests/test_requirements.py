@@ -28,7 +28,12 @@ def test_parse_requirements_file():
 
 
 @pytest.mark.parametrize(
-    "bad_input", ["-cannot-start-with-dash==1.0.0", "not_pep440==1.0.4-snapshot"]
+    "bad_input",
+    [
+        "-cannot-start-with-dash==1.0.0",
+        "not_pep440==1.0.4-snapshot",
+        "invalid_op_plus_version~=7",
+    ],
 )
 def test_parse_requirement_bad_input(bad_input: str):
     """Should raise ValueError due to invalid requirement entry"""
