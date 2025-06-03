@@ -3,7 +3,7 @@ https://peps.python.org/pep-0508/"""
 
 import re
 from enum import IntEnum
-from typing import NoReturn
+from importlib.metadata import version as get_module_version
 
 _VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~="]
 
@@ -44,14 +44,17 @@ class Version:
         version_search = re.search(_PEP440_RE, version)
 
         if version_search is None:
-            self._raise_invalid_version(version)
+            raise ValueError(f"Invalid version {version}")
 
+        # release_version can't be None here, others can since
+        # they are marked optional by a "?" in the regex
+        release_version: str
+        pre_segment: str | None
+        post_segment: str | None
+        dev_segment: str | None
         release_version, pre_segment, post_segment, dev_segment = (
             version_search.groups()
         )
-
-        if release_version is None:
-            self._raise_invalid_version(version)
 
         self.release_version: tuple[int, ...] = tuple(
             int(i) for i in release_version.split(".")
@@ -82,7 +85,7 @@ class Version:
             int(dev_segment.lstrip(".dev")) if dev_segment is not None else -1
         )
 
-    def __eq__(self, other: "Version") -> bool:
+    def __eq__(self, other) -> bool:
         return (
             self.release_version == other.release_version
             and self.pre_segment == other.pre_segment
@@ -91,7 +94,7 @@ class Version:
             and self.dev_segment == other.dev_segment
         )
 
-    def __gt__(self, other: "Version") -> bool:
+    def __gt__(self, other) -> bool:
         if self.release_version != other.release_version:
             return self.release_version > other.release_version
 
@@ -113,12 +116,8 @@ class Version:
         else:
             return self.dev_segment < other.dev_segment
 
-    def __ge__(self, other: "Version") -> bool:
+    def __ge__(self, other) -> bool:
         return self > other or self == other
-
-    @staticmethod
-    def _raise_invalid_version(version: str) -> NoReturn:
-        raise ValueError(f"Invalid version {version}")
 
 
 class VersionRule:
@@ -148,7 +147,7 @@ class VersionRule:
                 f"more than one segment, {self._version.release_version} has only one"
             )
 
-    def __eq__(self, other: "VersionRule") -> bool:
+    def __eq__(self, other) -> bool:
         return (
             self._operator == other._operator
             and self._version == other._version
@@ -201,30 +200,26 @@ class VersionRule:
 class Requirement:
     """Represents a dependency of a python module"""
 
-    __slots__ = ("name", "version_rules")
+    __slots__ = ("name", "rules")
 
     def __init__(self, name: str, version_rules: list[VersionRule]) -> None:
         self.name: str = name
-        self.version_rules: list[VersionRule] = version_rules
+        self.rules: list[VersionRule] = version_rules
 
-    def __eq__(self, other: "Requirement") -> bool:
+    def __eq__(self, other) -> bool:
         return (
             self.name == other.name
-            and len(self.version_rules) == len(other.version_rules)
-            and all(
-                rule1 == rule2
-                for rule1, rule2 in zip(self.version_rules, other.version_rules)
-            )
+            and len(self.rules) == len(other.rules)
+            and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))
         )
 
     def matches_installed_version(self) -> bool:
         """Returns True when this dependency's version rules match the installed
         version in current python interpreter.
         Raises PackageNotFoundError if not present"""
-        return all(
-            version_rule.installed_version_is_compliant(self.name)
-            for version_rule in self.version_rules
-        )
+        installed_version: str = get_module_version(self.name)
+
+        return all(rule.version_is_compliant(installed_version) for rule in self.rules)
 
 
 def parse_requirements_file(
