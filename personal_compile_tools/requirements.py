@@ -5,6 +5,8 @@ import re
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
 
+from personal_compile_tools.converters import version_str_to_tuple
+
 _VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~="]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
@@ -20,6 +22,8 @@ _REQUIREMENT_RE: str = (
 
 
 class PreSegmentType(IntEnum):
+    """Represents pre-release versions in pep440"""
+
     ALPHA = 0
     BETA = 1
     CANDIDATE = 2
@@ -56,9 +60,7 @@ class Version:
             version_search.groups()
         )
 
-        self.release_version: tuple[int, ...] = tuple(
-            int(i) for i in release_version.split(".")
-        )
+        self.release_version: tuple[int, ...] = version_str_to_tuple(release_version)
 
         if not keep_trailing_zeros:
             while len(self.release_version) > 1 and self.release_version[-1] == 0:
@@ -216,7 +218,7 @@ class Requirement:
     def matches_installed_version(self) -> bool:
         """Returns True when this dependency's version rules match the installed
         version in current python interpreter.
-        Raises PackageNotFoundError if not present"""
+        Raises importlib.metadata.PackageNotFoundError if not present"""
         installed_version: str = get_module_version(self.name)
 
         return all(rule.version_is_compliant(installed_version) for rule in self.rules)
