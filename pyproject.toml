@@ -3,7 +3,14 @@ authors = [
     {name = "James Demetris"},
 ]
 name            = "personal-compile-tools"
-version         = "0.0.1"
 readme          = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies    = []
+dynamic         = ["version"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["personal_compile_tools*"]
+
+[tool.setuptools.dynamic]
+version = {file = "version.txt"}
