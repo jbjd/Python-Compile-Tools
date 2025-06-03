@@ -171,6 +171,8 @@ class VersionRule:
                 )
             case ">":
                 return installed_version > self.version
+            case ">=":
+                return installed_version >= self.version
             case "!=":
                 return not self._compare_versions_with_fuzzy_match(installed_version)
             case _:
