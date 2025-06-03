@@ -124,7 +124,7 @@ class Version:
 class VersionRule:
     """Rule that a package installer must follow e.x. >=1.0.0"""
 
-    __slots__ = ("fuzzy_match", "operator", "version")
+    __slots__ = ("_fuzzy_match", "_operator", "_version")
 
     def __init__(self, operator: str, version: str) -> None:
         if operator not in _VALID_OPERATORS:
@@ -132,27 +132,27 @@ class VersionRule:
 
         if version.endswith(".*"):
             version = version[:-2]
-            self.fuzzy_match = True
+            self._fuzzy_match = True
         else:
-            self.fuzzy_match = False
+            self._fuzzy_match = False
 
-        if self.fuzzy_match and operator not in ("==", "!="):
+        if self._fuzzy_match and operator not in ("==", "!="):
             raise ValueError(".* can only be used with == or != operators")
 
-        self.operator: str = operator
-        self.version = Version(version, keep_trailing_zeros=self.fuzzy_match)
+        self._operator: str = operator
+        self._version = Version(version, keep_trailing_zeros=self._fuzzy_match)
 
-        if self.operator == "~=" and len(self.version.release_version) < 2:
+        if self._operator == "~=" and len(self._version.release_version) < 2:
             raise ValueError(
                 "Use of '~=' operator requires release version to have "
-                f"more than one segment, {self.version.release_version} has only one"
+                f"more than one segment, {self._version.release_version} has only one"
             )
 
     def __eq__(self, other: "VersionRule") -> bool:
         return (
-            self.operator == other.operator
-            and self.version == other.version
-            and self.fuzzy_match == other.fuzzy_match
+            self._operator == other._operator
+            and self._version == other._version
+            and self._fuzzy_match == other._fuzzy_match
         )
 
     def version_is_compliant(self, installed_version_raw: str) -> bool:
@@ -160,19 +160,22 @@ class VersionRule:
         is compliant with the rule this object represents"""
         installed_version = Version(installed_version_raw)
 
-        # TODO: Handle all
-        match self.operator:
+        match self._operator:
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
-                compare_up_to: int = len(self.version.release_version) - 1
+                compare_up_to: int = len(self._version.release_version) - 1
 
                 return self._compare_up_to_len(installed_version, compare_up_to) and (
-                    installed_version >= self.version
+                    installed_version >= self._version
                 )
             case ">":
-                return installed_version > self.version
+                return installed_version > self._version
             case ">=":
-                return installed_version >= self.version
+                return installed_version >= self._version
+            case "<":
+                return installed_version < self._version
+            case "<=":
+                return installed_version <= self._version
             case "!=":
                 return not self._compare_versions_with_fuzzy_match(installed_version)
             case _:
@@ -181,16 +184,16 @@ class VersionRule:
     def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
 
         # If fuzzy is true, only release version will be set
-        if self.fuzzy_match:
-            compare_up_to: int = len(self.version.release_version)
+        if self._fuzzy_match:
+            compare_up_to: int = len(self._version.release_version)
 
             return self._compare_up_to_len(other, compare_up_to)
 
-        return self.version == other
+        return self._version == other
 
     def _compare_up_to_len(self, other: Version, compare_up_to: int) -> bool:
         return (
-            self.version.release_version[:compare_up_to]
+            self._version.release_version[:compare_up_to]
             == other.release_version[:compare_up_to]
         )
 
@@ -285,9 +288,12 @@ def normalize_version(version: str) -> str:
 
     # Normalize zeros
     version = re.sub(r"\.00+", ".0", version)
-    return (
-        version.replace("alpha", "a", 1).replace("beta", "b", 1).replace("c", "rc", 1)
-    )
+
+    # Don't turn rc -> rrc, only c -> rc
+    if "rc" not in version:
+        version = version.replace("c", "rc", 1)
+
+    return version.replace("alpha", "a", 1).replace("beta", "b", 1)
 
 
 def version_is_pep440_compliant(version: str) -> bool:

@@ -164,3 +164,44 @@ def test_greater_than_or_equal_operator(
     rule = VersionRule(GT_OR_EQUAL_OP, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "version,installed_version,expected_compliance",
+    [
+        ("1.4.5", "1.4.5", False),
+        ("1.3", "1.2", True),
+        ("7.8.9b1.post2", "7.8.9.dev1", False),
+        ("7.8.9b1.post2", "7.8.9a0", True),
+    ],
+)
+def test_less_than_operator(
+    version: str, installed_version: str, expected_compliance: bool
+):
+    """Should return correct bool if installed version is greater than version"""
+
+    LT_OP = "<"
+
+    rule = VersionRule(LT_OP, version)
+
+    assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "version,installed_version,expected_compliance",
+    [
+        ("1.4.5", "1.4.5", True),
+        ("1.dev6", "1.2.dev5", False),
+        ("4.3b5.post2", "4.3b5.post2.dev9", True),
+    ],
+)
+def test_less_than_or_equal_operator(
+    version: str, installed_version: str, expected_compliance: bool
+):
+    """Should return correct bool if installed version is greater than version"""
+
+    LT_OR_EQUAL_OP = "<="
+
+    rule = VersionRule(LT_OR_EQUAL_OP, version)
+
+    assert rule.version_is_compliant(installed_version) is expected_compliance
