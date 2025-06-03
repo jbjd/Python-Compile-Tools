@@ -44,8 +44,8 @@ class Version:
     )
 
     def __init__(self, version: str, keep_trailing_zeros: bool = False) -> None:
-        version = normalize_version(version)
-        version_search = re.search(_PEP440_RE, version)
+        normalized_version = normalize_version(version)
+        version_search = re.search(_PEP440_RE, normalized_version)
 
         if version_search is None:
             raise ValueError(f"Invalid version {version}")
@@ -138,7 +138,7 @@ class VersionRule:
             self._fuzzy_match = False
 
         if self._fuzzy_match and operator not in ("==", "!="):
-            raise ValueError(".* can only be used with == or != operators")
+            raise ValueError(".* can only be used with '==' or '!=' operators")
 
         self._operator: str = operator
         self._version = Version(version, keep_trailing_zeros=self._fuzzy_match)
