@@ -7,6 +7,7 @@ from personal_compile_tools.requirements import (
     VersionRule,
     parse_requirement,
     parse_requirements_file,
+    version_is_pep440_compliant,
 )
 from tests.conftest import EXAMPLE_FOLDER
 
@@ -41,6 +42,20 @@ def test_parse_requirement_bad_input(bad_input: str):
 
     with pytest.raises(ValueError):
         parse_requirement(bad_input)
+
+
+@pytest.mark.parametrize(
+    "operator,version",
+    [
+        ("=", "1.2.3"),  # = is not an operator
+        (">=", "1.2.*"),  # .* can only be used with == or !=
+    ],
+)
+def test_version_rule_bad_input(operator: str, version: str):
+    """Should raise ValueError when release version not parsed"""
+
+    with pytest.raises(ValueError):
+        VersionRule(operator, version)
 
 
 @pytest.mark.parametrize(
@@ -205,3 +220,21 @@ def test_less_than_or_equal_operator(
     rule = VersionRule(LT_OR_EQUAL_OP, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "version,expected_compliance",
+    [
+        ("1.4.5", True),
+        ("1alpha2.dev6", True),
+        ("8.9beta4.post5.dev7", True),
+        ("8.9c6", True),
+        (".9c6", False),
+        ("8beta4rc4.dev6", False),
+        ("4.3b5.post2-", False),
+    ],
+)
+def test_version_is_pep440_compliant(version: str, expected_compliance: bool):
+    """Should return correct bool if installed version is greater than version"""
+
+    assert version_is_pep440_compliant(version) is expected_compliance
