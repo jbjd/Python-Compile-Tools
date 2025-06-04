@@ -1,0 +1,43 @@
+name: Validate Code
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Minimum Python Version
+        id: python-version
+        run: |
+          min_version=$(grep requires-python pyproject.toml | grep -Eo [0-9]+.[0-9]+)
+          if [ -z $min_version ]; then
+            echo "Failed to parse version from pyproject.toml"
+            exit 1
+          fi
+          echo "minimum=$min_version" >> $GITHUB_OUTPUT
+
+      - name: Set up Python ${{ steps.python-version.outputs.minimum }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.python-version.outputs.minimum }}
+
+      - name: Install Validate Dependencies
+        run: pip install -r requirements_dev.txt
+
+      - name: Validate
+        run: |
+          chmod +x ./validate.sh
+          ./validate.sh
+
+      - name: Unit Tests
+        run: |
+          chmod +x ./test.sh
+          ./test.sh
