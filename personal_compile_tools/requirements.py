@@ -44,8 +44,8 @@ class Version:
     )
 
     def __init__(self, version: str, keep_trailing_zeros: bool = False) -> None:
-        normalized_version = normalize_version(version)
-        version_search = re.search(_PEP440_RE, normalized_version)
+        self.raw_version: str = normalize_version(version)
+        version_search = re.search(_PEP440_RE, self.raw_version)
 
         if version_search is None:
             raise ValueError(f"Invalid version {version}")
@@ -86,6 +86,9 @@ class Version:
         self.dev_segment: int = (
             int(dev_segment.lstrip(".dev")) if dev_segment is not None else -1
         )
+
+    def __str__(self) -> str:
+        return self.raw_version
 
     def __eq__(self, other) -> bool:
         return (
@@ -149,6 +152,14 @@ class VersionRule:
                 f"more than one segment, {self._version.release_version} has only one"
             )
 
+    def __str__(self) -> str:
+        rule: str = f"{self._operator}{self._version}"
+
+        if self._fuzzy_match:
+            rule += ".*"
+
+        return rule
+
     def __eq__(self, other) -> bool:
         return (
             self._operator == other._operator
@@ -207,6 +218,9 @@ class Requirement:
     def __init__(self, name: str, version_rules: list[VersionRule]) -> None:
         self.name: str = name
         self.rules: list[VersionRule] = version_rules
+
+    def __str__(self) -> str:
+        return self.name + "".join(map(str, self.rules))
 
     def __eq__(self, other) -> bool:
         return (

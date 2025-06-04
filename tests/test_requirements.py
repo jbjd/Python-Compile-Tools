@@ -279,3 +279,19 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
 
     with patch(f"{_MODULE_NAME}.get_module_version", lambda _: installed_version):
         assert requirement.matches_installed_version() is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "requirememnt,expected_str",
+    [
+        (Requirement("asdf", [VersionRule("==", "1.2.3.post1")]), "asdf==1.2.3.post1"),
+        (Requirement("asdf", [VersionRule("==", "1.2.*")]), "asdf==1.2.*"),
+        (
+            Requirement("test-name", [VersionRule(">=", "1"), VersionRule("<", "2")]),
+            "test-name>=1<2",
+        ),
+    ],
+)
+def test_as_str(requirememnt: Requirement, expected_str: str):
+    """Should ensure installed version complies with all rules"""
+    assert str(requirememnt) == expected_str
