@@ -1,4 +1,6 @@
 import os
+from typing import Literal
+from unittest.mock import patch
 
 import pytest
 
@@ -10,6 +12,8 @@ from personal_compile_tools.requirements import (
     version_is_pep440_compliant,
 )
 from tests.conftest import EXAMPLE_FOLDER
+
+_MODULE_NAME = "personal_compile_tools.requirements"
 
 
 def test_parse_requirements_file():
@@ -133,6 +137,29 @@ def test_not_equals_operator(
 
 
 @pytest.mark.parametrize(
+    "operator,version,installed_version,expected_compliance",
+    [
+        ("==", "1.4.*", "1.4.5", True),
+        ("==", "1.4.*", "1.4.5.1", True),
+        ("==", "1.4.*", "1.0.5", False),
+        ("==", "1.4.5.*", "1.4", False),
+        ("==", "1.4.5.*", "1.4.5", True),
+    ],
+)
+def test_fuzzy_match(
+    operator: Literal["==", "!="],
+    version: str,
+    installed_version: str,
+    expected_compliance: bool,
+):
+    """Should return correct bool when fuzzy matching"""
+
+    rule = VersionRule(operator, version)
+
+    assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
     "version,installed_version,expected_compliance",
     [
         ("1.4.5", "1.4.5", False),
@@ -238,3 +265,17 @@ def test_version_is_pep440_compliant(version: str, expected_compliance: bool):
     """Should return correct bool if installed version is greater than version"""
 
     assert version_is_pep440_compliant(version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "installed_version,expected_compliance",
+    [("1.4.5", True), ("2.0.0", False), ("1.2.3", True), ("1.2.2", False)],
+)
+def test_matches_installed_version(installed_version: str, expected_compliance: bool):
+    """Should ensure installed version complies with all rules"""
+    requirement = Requirement(
+        "asdf", [VersionRule(">=", "1.2.3"), VersionRule("<", "2.0.0")]
+    )
+
+    with patch(f"{_MODULE_NAME}.get_module_version", lambda _: installed_version):
+        assert requirement.matches_installed_version() is expected_compliance

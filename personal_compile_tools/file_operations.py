@@ -1,4 +1,4 @@
-"""Functions for common file opertions. Mainly wrappers to standard library functions
+"""Functions for common file operations. Mainly wrappers to standard library functions
 condensed into one file"""
 
 import os
@@ -39,6 +39,7 @@ def delete_folders(folders: Iterable[str]) -> None:
 
 
 def get_folder_size(folder: str) -> int:
+    """Sums all files in folder and sub-folders recursively"""
     return sum(
         os.stat(p).st_size
         for p in glob(f"{folder}/**/*", recursive=True)

@@ -232,10 +232,10 @@ def parse_requirements_file(
     with open(file_path, "r", encoding=encoding) as fp:
         file_contents: str = fp.read()
 
-    return parse_requirments(file_contents)
+    return parse_requirements(file_contents)
 
 
-def parse_requirments(raw_requirements: str) -> list[Requirement]:
+def parse_requirements(raw_requirements: str) -> list[Requirement]:
     """Given contents of a requirements file, returns a list of
     objects representing the dependencies"""
 
@@ -261,7 +261,7 @@ def parse_requirement(requirement: str) -> Requirement:
     search_result = re.search(_REQUIREMENT_RE, requirement, re.IGNORECASE)
 
     if search_result is None:
-        raise ValueError(f"Invalid requirment {requirement}")
+        raise ValueError(f"Invalid requirement {requirement}")
 
     name: str = search_result.group(1)
     version_rules_unparsed: str = search_result.group(2)
