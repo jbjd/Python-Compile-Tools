@@ -3,7 +3,7 @@ condensed into one file"""
 
 import os
 import shutil
-from typing import Iterable
+from typing import Iterable, Iterator
 
 
 def copy_file(source: str, destination: str) -> None:
@@ -37,9 +37,39 @@ def delete_folders(folders: Iterable[str]) -> None:
         shutil.rmtree(folder, ignore_errors=True)
 
 
-def get_folder_size(folder: str) -> int:
-    """Sums all files in folder and sub-folders recursively"""
-    return sum(
-        sum(os.stat(f"{folder}/{file}").st_size for file in files)
-        for folder, _, files in os.walk(folder, followlinks=True)
-    )
+def get_folder_size(folder: str) -> Iterator[tuple[str, str]]:
+    """Sums all files in folder and sub-folders"""
+
+    size: int = 0
+    folders_to_visit_stack: list[str] = [folder]
+
+    while folders_to_visit_stack:
+        top_folder = folders_to_visit_stack.pop()
+        subfolders = []
+
+        try:
+            folder_iter = os.scandir(top_folder)
+        except OSError:
+            continue
+
+        with folder_iter:
+            while True:
+                try:
+                    entry = next(folder_iter)
+                except (OSError, StopIteration):
+                    break
+
+                try:
+                    is_folder = entry.is_dir()
+                except OSError:
+                    is_folder = False
+
+                if is_folder:
+                    subfolders.append(entry.path)
+                else:
+                    file_path: str = os.path.join(top_folder, entry.name)
+                    size += os.stat(file_path).st_size
+
+        folders_to_visit_stack += subfolders
+
+    return size
