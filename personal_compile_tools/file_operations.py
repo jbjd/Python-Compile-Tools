@@ -3,7 +3,6 @@ condensed into one file"""
 
 import os
 import shutil
-from glob import glob
 from typing import Iterable
 
 
@@ -41,7 +40,6 @@ def delete_folders(folders: Iterable[str]) -> None:
 def get_folder_size(folder: str) -> int:
     """Sums all files in folder and sub-folders recursively"""
     return sum(
-        os.stat(p).st_size
-        for p in glob(f"{folder}/**/*", recursive=True)
-        if os.path.isfile(p)
+        sum(os.stat(f"{folder}/{file}").st_size for file in files)
+        for folder, _, files in os.walk(folder, followlinks=True)
     )
