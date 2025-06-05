@@ -3,7 +3,7 @@ condensed into one file"""
 
 import os
 import shutil
-from typing import Iterable, Iterator
+from typing import Iterable
 
 
 def copy_file(source: str, destination: str) -> None:
@@ -37,7 +37,7 @@ def delete_folders(folders: Iterable[str]) -> None:
         shutil.rmtree(folder, ignore_errors=True)
 
 
-def get_folder_size(folder: str) -> Iterator[tuple[str, str]]:
+def get_folder_size(folder: str) -> int:
     """Sums all files in folder and sub-folders"""
 
     size: int = 0
