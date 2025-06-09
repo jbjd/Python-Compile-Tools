@@ -1,13 +1,14 @@
 """Classes and functions to help analyze requirements files.
 https://peps.python.org/pep-0508/"""
 
+from abc import ABC, abstractmethod
 import re
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
 
 from personal_compile_tools.converters import version_str_to_tuple
 
-_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~="]
+_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
@@ -30,7 +31,50 @@ class PreSegmentType(IntEnum):
     NONE = 3
 
 
-class Version:
+class Version(ABC):
+    """Represent a version of a python module"""
+
+    __slots__ = ("raw_version",)
+
+    def __init__(self, raw_version: str) -> None:
+        self.raw_version: str = raw_version
+
+    def __str__(self) -> str:
+        return self.raw_version
+
+    @abstractmethod
+    def __eq__(self, other) -> bool:
+        pass
+
+    @abstractmethod
+    def __gt__(self, other) -> bool:
+        pass
+
+    @abstractmethod
+    def __ge__(self, other) -> bool:
+        pass
+
+
+class VersionLiteral(Version):
+    """Represent a literal version where comparisons are only True
+    if the versions strings match exactly and are always False for gt/lt"""
+
+    __slots__ = ()
+
+    def __init__(self, raw_version: str) -> None:
+        super().__init__(raw_version)
+
+    def __eq__(self, other) -> bool:
+        return self.raw_version == other.raw_version
+
+    def __gt__(self, other) -> bool:
+        return False
+
+    def __ge__(self, other) -> bool:
+        return self.raw_version == other.raw_version
+
+
+class VersionPep440(Version):
     """Represents a version as specified in pep440
     https://peps.python.org/pep-0440/"""
 
@@ -39,12 +83,12 @@ class Version:
         "post_segment",
         "pre_segment",
         "pre_segment_type",
-        "raw_version",
         "release_version",
     )
 
     def __init__(self, version: str, keep_trailing_zeros: bool = False) -> None:
-        self.raw_version: str = normalize_version(version)
+        super().__init__(normalize_version(version))
+
         version_search = re.search(_PEP440_RE, self.raw_version)
 
         if version_search is None:
@@ -86,9 +130,6 @@ class Version:
         self.dev_segment: int = (
             int(dev_segment.lstrip(".dev")) if dev_segment is not None else -1
         )
-
-    def __str__(self) -> str:
-        return self.raw_version
 
     def __eq__(self, other) -> bool:
         return (
@@ -144,7 +185,9 @@ class VersionRule:
             raise ValueError(".* can only be used with '==' or '!=' operators")
 
         self._operator: str = operator
-        self._version = Version(version, keep_trailing_zeros=self._fuzzy_match)
+
+        is_literal: bool = operator == "==="
+        self._version: Version = _str_to_version(version, is_literal)
 
         if self._operator == "~=" and len(self._version.release_version) < 2:
             raise ValueError(
@@ -170,7 +213,9 @@ class VersionRule:
     def version_is_compliant(self, installed_version_raw: str) -> bool:
         """Returns True if provided version
         is compliant with the rule this object represents"""
-        installed_version = Version(installed_version_raw)
+
+        use_literal_compare: bool = self._operator == "==="
+        installed_version = _str_to_version(installed_version_raw, use_literal_compare)
 
         match self._operator:
             case "~=":
@@ -188,12 +233,14 @@ class VersionRule:
                 return installed_version < self._version
             case "<=":
                 return installed_version <= self._version
+            case "===":
+                return installed_version == self._version
             case "!=":
                 return not self._compare_versions_with_fuzzy_match(installed_version)
             case _:
                 return self._compare_versions_with_fuzzy_match(installed_version)
 
-    def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
+    def _compare_versions_with_fuzzy_match(self, other: VersionPep440) -> bool:
 
         # If fuzzy is true, only release version will be set
         if self._fuzzy_match:
@@ -203,7 +250,7 @@ class VersionRule:
 
         return self._version == other
 
-    def _compare_up_to_len(self, other: Version, compare_up_to: int) -> bool:
+    def _compare_up_to_len(self, other: VersionPep440, compare_up_to: int) -> bool:
         return (
             self._version.release_version[:compare_up_to]
             == other.release_version[:compare_up_to]
@@ -312,3 +359,7 @@ def version_is_pep440_compliant(version: str) -> bool:
     https://peps.python.org/pep-0440/"""
 
     return re.match(f"^{_PEP440_RE}$", normalize_version(version)) is not None
+
+
+def _str_to_version(version: str, is_literal: bool) -> Version:
+    return VersionLiteral(version) if is_literal else VersionPep440(version)

@@ -250,6 +250,26 @@ def test_less_than_or_equal_operator(
 
 
 @pytest.mark.parametrize(
+    "version,installed_version,expected_compliance",
+    [
+        ("1.4.5", "1.4.5", True),
+        ("any-comboOf5tuff", "any-comboOf5tuff", True),
+        ("123", "132", False),
+    ],
+)
+def test_arbitrary_equality_operator(
+    version: str, installed_version: str, expected_compliance: bool
+):
+    """Should return correct bool if installed version is greater than version"""
+
+    ARBITRARY_EQUALITY_OP = "==="
+
+    rule = VersionRule(ARBITRARY_EQUALITY_OP, version)
+
+    assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
     "version,expected_compliance",
     [
         ("1.4.5", True),
