@@ -46,7 +46,12 @@ class Version:
         "dev_segment",
     )
 
-    def __init__(self, raw_version: str, is_literal: bool = False) -> None:
+    def __init__(
+        self,
+        raw_version: str,
+        is_literal: bool = False,
+        keep_trailing_zeros: bool = False,
+    ) -> None:
         self.is_literal: bool = is_literal
         self.raw_version: str
         self.release_version: tuple[int, ...]
@@ -86,8 +91,9 @@ class Version:
         self.release_version = version_str_to_tuple(release_version)
 
         # 1.0.0 is same as 1 so remove training 0s
-        while len(self.release_version) > 1 and self.release_version[-1] == 0:
-            self.release_version = self.release_version[:-1]
+        if not keep_trailing_zeros:
+            while len(self.release_version) > 1 and self.release_version[-1] == 0:
+                self.release_version = self.release_version[:-1]
 
         self.pre_segment_type = self._get_pre_segment_type(pre_segment)
         self.pre_segment = self._get_segment_value(pre_segment, "abrc")
@@ -185,7 +191,7 @@ class VersionRule:
         self._operator: str = operator
 
         is_literal: bool = operator == "==="
-        self._version = Version(version, is_literal)
+        self._version = Version(version, is_literal, self._fuzzy_match)
 
         if self._operator == "~=" and len(self._version.release_version) < 2:
             raise ValueError(
