@@ -71,26 +71,16 @@ class Version:
 
         self.raw_version = normalize_version(raw_version)
 
-        # TODO: Refactor to break this up more
-
-        version_search = re.search(_PEP440_RE, self.raw_version)
-
-        if version_search is None:
-            raise ValueError(f"Invalid version {raw_version}")
-
         # release_version can't be None here, others can since
         # they are marked optional by a "?" in the regex
-        release_version: str
-        pre_segment: str | None
-        post_segment: str | None
-        dev_segment: str | None
         release_version, pre_segment, post_segment, dev_segment = (
-            version_search.groups()
+            self._parse_raw_version(self.raw_version)
         )
 
         self.release_version = version_str_to_tuple(release_version)
 
         # 1.0.0 is same as 1 so remove training 0s
+        # Optional to keep them for cases like ~= operator
         if not keep_trailing_zeros:
             while len(self.release_version) > 1 and self.release_version[-1] == 0:
                 self.release_version = self.release_version[:-1]
@@ -145,6 +135,17 @@ class Version:
         return self > other or self == other
 
     @staticmethod
+    def _parse_raw_version(
+        raw_version: str,
+    ) -> tuple[str, str | None, str | None, str | None]:
+        version_search = re.search(_PEP440_RE, raw_version)
+
+        if version_search is None:
+            raise ValueError(f"Invalid version {raw_version}")
+
+        return version_search.groups()
+
+    @staticmethod
     def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
         if parsed_segment is None:
             return PreSegmentType.NONE
@@ -167,6 +168,9 @@ class Version:
         """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
 
         If count is 2, then check "1.2" == "1.2" """
+        if self.is_literal or other.is_literal:
+            raise ValueError("Literal versions can't compare parts")
+
         return self.release_version[:count] == other.release_version[:count]
 
 
@@ -219,7 +223,9 @@ class VersionRule:
         is compliant with the rule this object represents"""
 
         use_literal_compare: bool = self._operator == "==="
-        installed_version_parsed = Version(installed_version, use_literal_compare)
+        installed_version_parsed = Version(
+            installed_version, use_literal_compare, self._fuzzy_match
+        )
 
         match self._operator:
             case "~=":
