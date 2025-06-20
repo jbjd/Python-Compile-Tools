@@ -143,7 +143,7 @@ class Version:
         if version_search is None:
             raise ValueError(f"Invalid version {raw_version}")
 
-        return version_search.groups()
+        return version_search.groups()  # type: ignore
 
     @staticmethod
     def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
