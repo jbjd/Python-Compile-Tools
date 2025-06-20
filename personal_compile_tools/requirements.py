@@ -32,7 +32,7 @@ class PreSegmentType(IntEnum):
     NONE = 3
 
 
-class VersionPep440:
+class Version:
     """Represents a version as specified in pep440
     https://peps.python.org/pep-0440/"""
 
@@ -157,7 +157,7 @@ class VersionPep440:
             else _NO_SEGMENT_VALUE
         )
 
-    def compare_up_to(self, other: "VersionPep440", count: int) -> bool:
+    def compare_up_to(self, other: "Version", count: int) -> bool:
         """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
 
         If count is 2, then check "1.2" == "1.2" """
@@ -185,7 +185,7 @@ class VersionRule:
         self._operator: str = operator
 
         is_literal: bool = operator == "==="
-        self._version = VersionPep440(version, is_literal)
+        self._version = Version(version, is_literal)
 
         if self._operator == "~=" and len(self._version.release_version) < 2:
             raise ValueError(
@@ -213,7 +213,7 @@ class VersionRule:
         is compliant with the rule this object represents"""
 
         use_literal_compare: bool = self._operator == "==="
-        installed_version_parsed = VersionPep440(installed_version, use_literal_compare)
+        installed_version_parsed = Version(installed_version, use_literal_compare)
 
         match self._operator:
             case "~=":
@@ -240,7 +240,7 @@ class VersionRule:
             case _:
                 return self._compare_versions_with_fuzzy_match(installed_version_parsed)
 
-    def _compare_versions_with_fuzzy_match(self, other: VersionPep440) -> bool:
+    def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
 
         # If fuzzy is true, only release version will be set
         if self._fuzzy_match:
