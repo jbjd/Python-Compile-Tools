@@ -6,6 +6,7 @@ import pytest
 
 from personal_compile_tools.requirements import (
     Requirement,
+    VersionPep440,
     VersionRule,
     parse_requirement,
     parse_requirements_file,
@@ -60,6 +61,13 @@ def test_version_rule_bad_input(operator: str, version: str):
 
     with pytest.raises(ValueError):
         VersionRule(operator, version)
+
+
+def test_bad_comparison():
+    """Should raise ValueError when release version not parsed"""
+
+    with pytest.raises(ValueError):
+        VersionPep440("asdf", is_literal=True) > VersionPep440("1.9")
 
 
 @pytest.mark.parametrize(
