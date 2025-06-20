@@ -44,12 +44,12 @@ def get_folder_size(folder: str) -> int:
 
 def _walk_folder(folder: str) -> Iterator[str]:
     """Edited version of os.walk to yield full paths of files within
-    a folder and all subfolders"""
+    a folder and all sub folders"""
     folders_to_visit_stack: list[str] = [folder]
 
     while folders_to_visit_stack:
         top_folder = folders_to_visit_stack.pop()
-        subfolders = []
+        sub_folders = []
 
         try:
             folder_iter = os.scandir(top_folder)
@@ -69,8 +69,8 @@ def _walk_folder(folder: str) -> Iterator[str]:
                     is_folder = False
 
                 if is_folder:
-                    subfolders.append(entry.path)
+                    sub_folders.append(entry.path)
                 else:
                     yield os.path.join(top_folder, entry.name)
 
-        folders_to_visit_stack += subfolders
+        folders_to_visit_stack += sub_folders

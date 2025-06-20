@@ -368,7 +368,7 @@ def normalize_version(version: str) -> str:
 
 
 def version_is_pep440_compliant(version: str) -> bool:
-    """Verifys version against pattern found here:
+    """Verifies version against pattern found here:
     https://peps.python.org/pep-0440/"""
 
     return re.match(f"^{_PEP440_RE}$", normalize_version(version)) is not None

@@ -313,7 +313,7 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
 
 
 @pytest.mark.parametrize(
-    "requirememnt,expected_str",
+    "requirement,expected_str",
     [
         (Requirement("asdf", [VersionRule("==", "1.2.3.post1")]), "asdf==1.2.3.post1"),
         (Requirement("asdf", [VersionRule("==", "1.2.*")]), "asdf==1.2.*"),
@@ -323,6 +323,6 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
         ),
     ],
 )
-def test_as_str(requirememnt: Requirement, expected_str: str):
+def test_as_str(requirement: Requirement, expected_str: str):
     """Should ensure installed version complies with all rules"""
-    assert str(requirememnt) == expected_str
+    assert str(requirement) == expected_str
