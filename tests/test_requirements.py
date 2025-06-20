@@ -64,7 +64,7 @@ def test_version_rule_bad_input(operator: str, version: str):
 
 
 def test_bad_comparison():
-    """Should raise ValueError when release version not parsed"""
+    """Should raise ValueError when literal version is compared < or >"""
 
     with pytest.raises(ValueError):
         Version("asdf", is_literal=True) > Version("1.9")
