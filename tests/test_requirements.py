@@ -6,6 +6,7 @@ import pytest
 
 from personal_compile_tools.requirements import (
     Requirement,
+    Version,
     VersionRule,
     parse_requirement,
     parse_requirements_file,
@@ -60,6 +61,13 @@ def test_version_rule_bad_input(operator: str, version: str):
 
     with pytest.raises(ValueError):
         VersionRule(operator, version)
+
+
+def test_bad_comparison():
+    """Should raise ValueError when literal version is compared < or >"""
+
+    with pytest.raises(ValueError):
+        Version("asdf", is_literal=True) > Version("1.9")
 
 
 @pytest.mark.parametrize(
@@ -144,6 +152,9 @@ def test_not_equals_operator(
         ("==", "1.4.*", "1.0.5", False),
         ("==", "1.4.5.*", "1.4", False),
         ("==", "1.4.5.*", "1.4.5", True),
+        ("==", "1.0.0.0.*", "1.0.0.0.6", True),
+        ("==", "1.0.0.0.*", "1.0.0.0.0", True),
+        ("==", "1.0.0.0.*", "1.0.0.6", False),
     ],
 )
 def test_fuzzy_match(
@@ -245,6 +256,26 @@ def test_less_than_or_equal_operator(
     LT_OR_EQUAL_OP = "<="
 
     rule = VersionRule(LT_OR_EQUAL_OP, version)
+
+    assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "version,installed_version,expected_compliance",
+    [
+        ("1.4.5", "1.4.5", True),
+        ("any-comboOf5tuff", "any-comboOf5tuff", True),
+        ("123", "132", False),
+    ],
+)
+def test_arbitrary_equality_operator(
+    version: str, installed_version: str, expected_compliance: bool
+):
+    """Should return correct bool if installed version is greater than version"""
+
+    ARBITRARY_EQUALITY_OP = "==="
+
+    rule = VersionRule(ARBITRARY_EQUALITY_OP, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 

@@ -7,7 +7,7 @@ from importlib.metadata import version as get_module_version
 
 from personal_compile_tools.converters import version_str_to_tuple
 
-_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~="]
+_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
@@ -19,6 +19,8 @@ _OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-zA-Z0-9\.\-_]
 _REQUIREMENT_RE: str = (
     r"^([A-Z0-9]|[A-Z0-9][A-Z0-9\._-]*[A-Z0-9])((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
+
+_NO_SEGMENT_VALUE: int = -1
 
 
 class PreSegmentType(IntEnum):
@@ -35,64 +37,69 @@ class Version:
     https://peps.python.org/pep-0440/"""
 
     __slots__ = (
-        "dev_segment",
-        "post_segment",
-        "pre_segment",
-        "pre_segment_type",
+        "is_literal",
         "raw_version",
         "release_version",
+        "pre_segment_type",
+        "pre_segment",
+        "post_segment",
+        "dev_segment",
     )
 
-    def __init__(self, version: str, keep_trailing_zeros: bool = False) -> None:
-        self.raw_version: str = normalize_version(version)
-        version_search = re.search(_PEP440_RE, self.raw_version)
+    def __init__(
+        self,
+        raw_version: str,
+        is_literal: bool = False,
+        keep_trailing_zeros: bool = False,
+    ) -> None:
+        self.is_literal: bool = is_literal
+        self.raw_version: str
+        self.release_version: tuple[int, ...]
+        self.pre_segment_type: PreSegmentType
+        self.pre_segment: int
+        self.post_segment: int
+        self.dev_segment: int
 
-        if version_search is None:
-            raise ValueError(f"Invalid version {version}")
+        if is_literal:
+            self.raw_version = raw_version
+            self.release_version = tuple()
+            self.pre_segment_type = PreSegmentType.NONE
+            self.pre_segment = _NO_SEGMENT_VALUE
+            self.post_segment = _NO_SEGMENT_VALUE
+            self.dev_segment = _NO_SEGMENT_VALUE
+            return
+
+        self.raw_version = normalize_version(raw_version)
 
         # release_version can't be None here, others can since
         # they are marked optional by a "?" in the regex
-        release_version: str
-        pre_segment: str | None
-        post_segment: str | None
-        dev_segment: str | None
         release_version, pre_segment, post_segment, dev_segment = (
-            version_search.groups()
+            self._parse_raw_version(self.raw_version)
         )
 
-        self.release_version: tuple[int, ...] = version_str_to_tuple(release_version)
+        self.release_version = version_str_to_tuple(release_version)
 
+        # 1.0.0 is same as 1 so remove training 0s
+        # Optional to keep them for cases like ~= operator
         if not keep_trailing_zeros:
             while len(self.release_version) > 1 and self.release_version[-1] == 0:
                 self.release_version = self.release_version[:-1]
 
-        self.pre_segment_type: PreSegmentType
-        if pre_segment is None:
-            self.pre_segment_type = PreSegmentType.NONE
-        elif pre_segment.startswith("a"):
-            self.pre_segment_type = PreSegmentType.ALPHA
-        elif pre_segment.startswith("b"):
-            self.pre_segment_type = PreSegmentType.BETA
-        else:
-            self.pre_segment_type = PreSegmentType.CANDIDATE
-
-        # Set to -1 by default so comparisons are easier
-        self.pre_segment: int = (
-            int(pre_segment.lstrip("abrc")) if pre_segment is not None else -1
-        )
-        self.post_segment: int = (
-            int(post_segment.lstrip(".post")) if post_segment is not None else -1
-        )
-        self.dev_segment: int = (
-            int(dev_segment.lstrip(".dev")) if dev_segment is not None else -1
-        )
+        self.pre_segment_type = self._get_pre_segment_type(pre_segment)
+        self.pre_segment = self._get_segment_value(pre_segment, "abrc")
+        self.post_segment = self._get_segment_value(post_segment, ".post")
+        self.dev_segment = self._get_segment_value(dev_segment, ".dev")
 
     def __str__(self) -> str:
         return self.raw_version
 
     def __eq__(self, other) -> bool:
+        if self.is_literal and other.is_literal:
+            return self.raw_version == other.raw_version
+
         return (
-            self.release_version == other.release_version
+            self.is_literal == other.is_literal
+            and self.release_version == other.release_version
             and self.pre_segment == other.pre_segment
             and self.pre_segment_type == other.pre_segment_type
             and self.post_segment == other.post_segment
@@ -100,6 +107,9 @@ class Version:
         )
 
     def __gt__(self, other) -> bool:
+        if self.is_literal or other.is_literal:
+            raise ValueError("Literal versions can't be greater or less then")
+
         if self.release_version != other.release_version:
             return self.release_version > other.release_version
 
@@ -124,6 +134,45 @@ class Version:
     def __ge__(self, other) -> bool:
         return self > other or self == other
 
+    @staticmethod
+    def _parse_raw_version(
+        raw_version: str,
+    ) -> tuple[str, str | None, str | None, str | None]:
+        version_search = re.search(_PEP440_RE, raw_version)
+
+        if version_search is None:
+            raise ValueError(f"Invalid version {raw_version}")
+
+        return version_search.groups()  # type: ignore
+
+    @staticmethod
+    def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
+        if parsed_segment is None:
+            return PreSegmentType.NONE
+        elif parsed_segment.startswith("a"):
+            return PreSegmentType.ALPHA
+        elif parsed_segment.startswith("b"):
+            return PreSegmentType.BETA
+        else:
+            return PreSegmentType.CANDIDATE
+
+    @staticmethod
+    def _get_segment_value(parsed_segment: str | None, to_strip: str) -> int:
+        return (
+            int(parsed_segment.lstrip(to_strip))
+            if parsed_segment is not None
+            else _NO_SEGMENT_VALUE
+        )
+
+    def compare_up_to(self, other: "Version", count: int) -> bool:
+        """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
+
+        If count is 2, then check "1.2" == "1.2" """
+        if self.is_literal or other.is_literal:
+            raise ValueError("Literal versions can't compare parts")
+
+        return self.release_version[:count] == other.release_version[:count]
+
 
 class VersionRule:
     """Rule that a package installer must follow e.x. >=1.0.0"""
@@ -144,7 +193,9 @@ class VersionRule:
             raise ValueError(".* can only be used with '==' or '!=' operators")
 
         self._operator: str = operator
-        self._version = Version(version, keep_trailing_zeros=self._fuzzy_match)
+
+        is_literal: bool = self._use_literal_compare()
+        self._version = Version(version, is_literal, self._fuzzy_match)
 
         if self._operator == "~=" and len(self._version.release_version) < 2:
             raise ValueError(
@@ -167,47 +218,56 @@ class VersionRule:
             and self._fuzzy_match == other._fuzzy_match
         )
 
-    def version_is_compliant(self, installed_version_raw: str) -> bool:
+    def version_is_compliant(self, installed_version: str) -> bool:
         """Returns True if provided version
         is compliant with the rule this object represents"""
-        installed_version = Version(installed_version_raw)
+
+        is_literal: bool = self._use_literal_compare()
+        installed_version_parsed = Version(
+            installed_version, is_literal, self._fuzzy_match
+        )
 
         match self._operator:
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
                 compare_up_to: int = len(self._version.release_version) - 1
 
-                return self._compare_up_to_len(installed_version, compare_up_to) and (
-                    installed_version >= self._version
-                )
+                return self._version.compare_up_to(
+                    installed_version_parsed, compare_up_to
+                ) and (installed_version_parsed >= self._version)
             case ">":
-                return installed_version > self._version
+                return installed_version_parsed > self._version
             case ">=":
-                return installed_version >= self._version
+                return installed_version_parsed >= self._version
             case "<":
-                return installed_version < self._version
+                return installed_version_parsed < self._version
             case "<=":
-                return installed_version <= self._version
+                return installed_version_parsed <= self._version
+            case "===":
+                return installed_version_parsed == self._version
             case "!=":
-                return not self._compare_versions_with_fuzzy_match(installed_version)
+                return not self._compare_versions_with_fuzzy_match(
+                    installed_version_parsed
+                )
             case _:
-                return self._compare_versions_with_fuzzy_match(installed_version)
+                return self._compare_versions_with_fuzzy_match(installed_version_parsed)
 
     def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
+        """Checks if self == other or if fuzzy match is True, checks
+        up to the number of parts in self's version.
 
-        # If fuzzy is true, only release version will be set
+        So if self is 1.2 and other is 1.2.3, fuzzy match says "1.2" == "1.2" """
+
+        # If fuzzy is true, only release version can be set
         if self._fuzzy_match:
             compare_up_to: int = len(self._version.release_version)
 
-            return self._compare_up_to_len(other, compare_up_to)
+            return self._version.compare_up_to(other, compare_up_to)
 
         return self._version == other
 
-    def _compare_up_to_len(self, other: Version, compare_up_to: int) -> bool:
-        return (
-            self._version.release_version[:compare_up_to]
-            == other.release_version[:compare_up_to]
-        )
+    def _use_literal_compare(self) -> bool:
+        return self._operator == "==="
 
 
 class Requirement:
