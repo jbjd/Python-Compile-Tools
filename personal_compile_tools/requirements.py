@@ -194,7 +194,7 @@ class VersionRule:
 
         self._operator: str = operator
 
-        is_literal: bool = operator == "==="
+        is_literal: bool = self._use_literal_compare()
         self._version = Version(version, is_literal, self._fuzzy_match)
 
         if self._operator == "~=" and len(self._version.release_version) < 2:
@@ -222,9 +222,9 @@ class VersionRule:
         """Returns True if provided version
         is compliant with the rule this object represents"""
 
-        use_literal_compare: bool = self._operator == "==="
+        is_literal: bool = self._use_literal_compare()
         installed_version_parsed = Version(
-            installed_version, use_literal_compare, self._fuzzy_match
+            installed_version, is_literal, self._fuzzy_match
         )
 
         match self._operator:
@@ -253,14 +253,21 @@ class VersionRule:
                 return self._compare_versions_with_fuzzy_match(installed_version_parsed)
 
     def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
+        """Checks if self == other or if fuzzy match is True, checks
+        up to the number of parts in self's version.
 
-        # If fuzzy is true, only release version will be set
+        So if self is 1.2 and other is 1.2.3, fuzzy match says "1.2" == "1.2" """
+
+        # If fuzzy is true, only release version can be set
         if self._fuzzy_match:
             compare_up_to: int = len(self._version.release_version)
 
             return self._version.compare_up_to(other, compare_up_to)
 
         return self._version == other
+
+    def _use_literal_compare(self) -> bool:
+        return self._operator == "==="
 
 
 class Requirement:
