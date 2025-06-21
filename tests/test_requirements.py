@@ -8,6 +8,7 @@ from personal_compile_tools.requirements import (
     Requirement,
     Version,
     VersionRule,
+    normalize_version,
     parse_requirement,
     parse_requirements_file,
     version_is_pep440_compliant,
@@ -313,16 +314,31 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
 
 
 @pytest.mark.parametrize(
-    "requirement,expected_str",
+    "name,operator_and_version",
     [
-        (Requirement("asdf", [VersionRule("==", "1.2.3.post1")]), "asdf==1.2.3.post1"),
-        (Requirement("asdf", [VersionRule("==", "1.2.*")]), "asdf==1.2.*"),
-        (
-            Requirement("test-name", [VersionRule(">=", "1"), VersionRule("<", "2")]),
-            "test-name>=1<2",
-        ),
+        ("asdf", [("==", "1.2.3a3.post1.dev6")]),
+        ("asdf", [("==", "1.2.*")]),
+        ("test-name", [(">=", "1"), ("<", "2")]),
     ],
 )
-def test_as_str(requirement: Requirement, expected_str: str):
+def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
     """Should ensure installed version complies with all rules"""
-    assert str(requirement) == expected_str
+    as_class = Requirement(name, [VersionRule(op, v) for op, v in operator_and_version])
+
+    expected_result: str = name + "".join(op + v for op, v in operator_and_version)
+
+    assert str(as_class) == expected_result
+
+
+@pytest.mark.parametrize(
+    "input_version,expected_version",
+    [
+        ("1-alpha2-post3-dev4", "1a2.post3.dev4"),
+        ("6.08_beta0_post1_dev2", "6.8b0.post1.dev2"),
+        ("1.C2post1dev2", "1rc2.post1.dev2"),
+    ],
+)
+def test_normalize_version(input_version: str, expected_version: str):
+    """Should ensure installed version complies with all rules"""
+
+    assert normalize_version(input_version) == expected_version
