@@ -15,9 +15,9 @@ _PEP440_RE: str = (
     r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
 )
 
-_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-zA-Z0-9\.\-_]+)"
+_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
 _REQUIREMENT_RE: str = (
-    r"^([A-Z0-9]|[A-Z0-9][A-Z0-9\._-]*[A-Z0-9])((?:" + _VALID_OPERATOR_RE + r").+)$"
+    r"^([a-z0-9](?:[a-z0-9\._-]*[a-z0-9])?)((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
 
 _NO_SEGMENT_VALUE: int = -1
@@ -306,7 +306,7 @@ def parse_requirement(requirement: str) -> Requirement:
     version_rules_unparsed: str = search_result.group(2)
 
     split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed
+        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
     )
 
     version_rules: list[VersionRule] = [
