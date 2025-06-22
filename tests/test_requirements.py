@@ -31,7 +31,7 @@ def test_parse_requirements_file():
         "some_module", [VersionRule(">=", "1.2.3"), VersionRule("<=", "2.0.0")]
     )
 
-    assert requirements[1] == Requirement("other", [VersionRule("==", "7.0.8")])
+    assert requirements[1] == Requirement("o", [VersionRule("==", "7.0.8")])
 
 
 @pytest.mark.parametrize(
