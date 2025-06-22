@@ -5,19 +5,19 @@ import re
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
 
-from personal_compile_tools.converters import version_str_to_tuple
+from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 
 _VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
 _PEP440_RE: str = (
-    r"^([0-9]+(?:\.[0-9]+)*)((?:a|b|rc)[0-9]+)?(\.post[0-9]+)?(\.dev[0-9]+)?$"
+    r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
 )
 
-_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-zA-Z0-9\.\-_]+)"
+_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
 _REQUIREMENT_RE: str = (
-    r"^([A-Z0-9]|[A-Z0-9][A-Z0-9\._-]*[A-Z0-9])((?:" + _VALID_OPERATOR_RE + r").+)$"
+    r"^([a-z0-9](?:[a-z0-9\._-]*[a-z0-9])?)((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
 
 _NO_SEGMENT_VALUE: int = -1
@@ -69,26 +69,21 @@ class Version:
             self.dev_segment = _NO_SEGMENT_VALUE
             return
 
-        self.raw_version = normalize_version(raw_version)
+        (
+            self.release_version,
+            self.pre_segment_type,
+            self.pre_segment,
+            self.post_segment,
+            self.dev_segment,
+        ) = parse_pep440_version(raw_version, keep_trailing_zeros)
 
-        # release_version can't be None here, others can since
-        # they are marked optional by a "?" in the regex
-        release_version, pre_segment, post_segment, dev_segment = (
-            self._parse_raw_version(self.raw_version)
+        self.raw_version = construct_pep440_version(
+            self.release_version,
+            self.pre_segment_type,
+            self.pre_segment,
+            self.post_segment,
+            self.dev_segment,
         )
-
-        self.release_version = version_str_to_tuple(release_version)
-
-        # 1.0.0 is same as 1 so remove training 0s
-        # Optional to keep them for cases like ~= operator
-        if not keep_trailing_zeros:
-            while len(self.release_version) > 1 and self.release_version[-1] == 0:
-                self.release_version = self.release_version[:-1]
-
-        self.pre_segment_type = self._get_pre_segment_type(pre_segment)
-        self.pre_segment = self._get_segment_value(pre_segment, "abrc")
-        self.post_segment = self._get_segment_value(post_segment, ".post")
-        self.dev_segment = self._get_segment_value(dev_segment, ".dev")
 
     def __str__(self) -> str:
         return self.raw_version
@@ -133,36 +128,6 @@ class Version:
 
     def __ge__(self, other) -> bool:
         return self > other or self == other
-
-    @staticmethod
-    def _parse_raw_version(
-        raw_version: str,
-    ) -> tuple[str, str | None, str | None, str | None]:
-        version_search = re.search(_PEP440_RE, raw_version)
-
-        if version_search is None:
-            raise ValueError(f"Invalid version {raw_version}")
-
-        return version_search.groups()  # type: ignore
-
-    @staticmethod
-    def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
-        if parsed_segment is None:
-            return PreSegmentType.NONE
-        elif parsed_segment.startswith("a"):
-            return PreSegmentType.ALPHA
-        elif parsed_segment.startswith("b"):
-            return PreSegmentType.BETA
-        else:
-            return PreSegmentType.CANDIDATE
-
-    @staticmethod
-    def _get_segment_value(parsed_segment: str | None, to_strip: str) -> int:
-        return (
-            int(parsed_segment.lstrip(to_strip))
-            if parsed_segment is not None
-            else _NO_SEGMENT_VALUE
-        )
 
     def compare_up_to(self, other: "Version", count: int) -> bool:
         """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
@@ -341,7 +306,7 @@ def parse_requirement(requirement: str) -> Requirement:
     version_rules_unparsed: str = search_result.group(2)
 
     split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed
+        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
     )
 
     version_rules: list[VersionRule] = [
@@ -355,20 +320,108 @@ def parse_requirement(requirement: str) -> Requirement:
 def normalize_version(version: str) -> str:
     """Normalizes version with rules found here:
     https://peps.python.org/pep-0440/"""
-    # TODO: this is not complete
 
-    # Normalize zeros
-    version = re.sub(r"\.00+", ".0", version)
-
-    # Don't turn rc -> rrc, only c -> rc
-    if "rc" not in version:
-        version = version.replace("c", "rc", 1)
-
-    return version.replace("alpha", "a", 1).replace("beta", "b", 1)
+    return construct_pep440_version(*parse_pep440_version(version))
 
 
 def version_is_pep440_compliant(version: str) -> bool:
     """Verifies version against pattern found here:
     https://peps.python.org/pep-0440/"""
 
-    return re.match(f"^{_PEP440_RE}$", normalize_version(version)) is not None
+    return re.match(f"^{_PEP440_RE}$", version, flags=re.IGNORECASE) is not None
+
+
+def construct_pep440_version(
+    release_version: tuple[int, ...],
+    pre_segment_type: PreSegmentType,
+    pre_segment: int,
+    post_segment: int,
+    dev_segment: int,
+) -> str:
+    """Given parts of a pep440 version, return a str
+    of the version in the normalized form recommended
+    by pep440
+
+    A Segment will be considered absent if its negative"""
+    version: str = version_tuple_to_str(release_version)
+
+    if pre_segment < 0 and pre_segment_type != PreSegmentType.NONE:
+        raise ValueError("Must specify a value for pre-release segment if its present")
+
+    if pre_segment >= 0 and pre_segment_type == PreSegmentType.NONE:
+        raise ValueError("Can't have pre-release version number if its not present")
+
+    if pre_segment >= 0:
+        if pre_segment_type == PreSegmentType.ALPHA:
+            version += "a"
+        elif pre_segment_type == PreSegmentType.BETA:
+            version += "b"
+        elif pre_segment_type == PreSegmentType.CANDIDATE:
+            version += "rc"
+
+        version += str(pre_segment)
+
+    if post_segment >= 0:
+        version += f".post{post_segment}"
+
+    if dev_segment >= 0:
+        version += f".dev{dev_segment}"
+
+    return version
+
+
+def parse_pep440_version(
+    raw_version: str, keep_trailing_zeros: bool = False
+) -> tuple[tuple[int, ...], PreSegmentType, int, int, int]:
+    """Given a pep440 compliant version, turn it into its
+    parts. A release version, pre release segment type,
+    pre release segment, post release segment, and
+    dev release segment.
+
+    Segments that are missing are given a value of -1"""
+    version_search = re.search(_PEP440_RE, raw_version, flags=re.IGNORECASE)
+
+    if version_search is None:
+        raise ValueError(f"Invalid version {raw_version}")
+
+    release_version_raw: str
+    pre_segment_raw: str | None
+    post_segment_raw: str | None
+    dev_segment_raw: str | None
+    release_version_raw, pre_segment_raw, post_segment_raw, dev_segment_raw = (
+        version_search.groups()
+    )
+
+    release_version = version_str_to_tuple(release_version_raw)
+
+    # 1.0.0 is same as 1 so remove training 0s
+    # Optional to keep them for cases like ~= operator
+    if not keep_trailing_zeros:
+        while len(release_version) > 1 and release_version[-1] == 0:
+            release_version = release_version[:-1]
+
+    pre_segment_type = _get_pre_segment_type(pre_segment_raw)
+    pre_segment = _get_segment_value(pre_segment_raw)
+    post_segment = _get_segment_value(post_segment_raw)
+    dev_segment = _get_segment_value(dev_segment_raw)
+
+    return (release_version, pre_segment_type, pre_segment, post_segment, dev_segment)
+
+
+def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
+    if parsed_segment is None:
+        return PreSegmentType.NONE
+    elif parsed_segment.startswith("a"):
+        return PreSegmentType.ALPHA
+    elif parsed_segment.startswith("b"):
+        return PreSegmentType.BETA
+    else:
+        return PreSegmentType.CANDIDATE
+
+
+def _get_segment_value(parsed_segment: str | None) -> int:
+    return (
+        int(re.sub("[^0-9]", "", parsed_segment))
+        if parsed_segment is not None
+        else _NO_SEGMENT_VALUE
+    )
