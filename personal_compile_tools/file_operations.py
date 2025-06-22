@@ -39,10 +39,10 @@ def delete_folders(folders: Iterable[str]) -> None:
 
 def get_folder_size(folder: str) -> int:
     """Sums all files in folder and sub-folders"""
-    return sum(os.stat(file).st_size for file in _walk_folder(folder))
+    return sum(os.stat(file).st_size for file in walk_folder(folder))
 
 
-def _walk_folder(folder: str) -> Iterator[str]:
+def walk_folder(folder: str) -> Iterator[str]:
     """Edited version of os.walk to yield full paths of files within
     a folder and all sub folders"""
     folders_to_visit_stack: list[str] = [folder]
