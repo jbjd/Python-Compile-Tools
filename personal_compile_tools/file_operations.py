@@ -7,10 +7,12 @@ from typing import Iterable, Iterator
 
 
 def copy_file(source: str, destination: str) -> None:
+    """Copies a file from source to destination"""
     shutil.copy(source, destination)
 
 
 def copy_folder(source: str, destination: str) -> None:
+    """Copies a folder from source to destination"""
     shutil.copytree(source, destination)
 
 
@@ -29,10 +31,12 @@ def delete_files(files: Iterable[str]) -> None:
 
 
 def delete_folder(folder: str) -> None:
+    """Deletes folder, doing nothing if it does not exist"""
     shutil.rmtree(folder, ignore_errors=True)
 
 
 def delete_folders(folders: Iterable[str]) -> None:
+    """Deletes folders, doing nothing if they do not exist"""
     for folder in folders:
         shutil.rmtree(folder, ignore_errors=True)
 

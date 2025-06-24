@@ -232,6 +232,7 @@ class VersionRule:
         return self._version == other
 
     def _use_literal_compare(self) -> bool:
+        """Returns True if compare should be strictly literal"""
         return self._operator == "==="
 
 
@@ -409,6 +410,7 @@ def parse_pep440_version(
 
 
 def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
+    """Returns the type of pre-release based on the parsed segment"""
     if parsed_segment is None:
         return PreSegmentType.NONE
     elif parsed_segment.startswith("a"):
@@ -420,6 +422,8 @@ def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
 
 
 def _get_segment_value(parsed_segment: str | None) -> int:
+    """Returns the int value of the parsed segment or -1 if
+    the segment is None"""
     return (
         int(re.sub("[^0-9]", "", parsed_segment))
         if parsed_segment is not None
