@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 
 from personal_compile_tools.requirements import (
-    NO_SEGMENT_VALUE,
     PreSegmentType,
     Requirement,
     VersionLiteral,
