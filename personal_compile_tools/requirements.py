@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
 from typing import Self
+import warnings
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 
@@ -231,7 +232,11 @@ class VersionRule:
 
         match self._operator:
             case "@":
-                raise NotImplementedError
+                warnings.warn(
+                    f"Can't verify if source at {self._version} matches "
+                    f"installed version {installed_version_parsed}. Assuming True"
+                )
+                return True
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
                 compare_up_to: int = self._version.get_version_parts_len() - 1
