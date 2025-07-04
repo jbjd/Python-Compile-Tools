@@ -5,9 +5,13 @@ from unittest.mock import patch
 import pytest
 
 from personal_compile_tools.requirements import (
+    NO_SEGMENT_VALUE,
+    PreSegmentType,
     Requirement,
-    Version,
+    VersionLiteral,
     VersionRule,
+    construct_pep440_version,
+    make_version,
     normalize_version,
     parse_requirement,
     parse_requirements_file,
@@ -64,11 +68,43 @@ def test_version_rule_bad_input(operator: str, version: str):
         VersionRule(operator, version)
 
 
+def test_construct_pep440_version_bad_input():
+    """Should raise ValueError when illegal input value combinations present"""
+
+    # Specifies pre segment type without a value
+    with pytest.raises(ValueError):
+        construct_pep440_version((1, 2, 3), PreSegmentType.ALPHA)
+
+    # Specifies no pre segment type, but does specify  a value
+    with pytest.raises(ValueError):
+        construct_pep440_version((1, 2, 3), pre_segment=3)
+
+
 def test_bad_comparison():
     """Should raise ValueError when literal version is compared < or >"""
 
     with pytest.raises(ValueError):
-        Version("asdf", is_literal=True) > Version("1.9")
+        VersionLiteral("asdf") > VersionLiteral("1.9")
+
+    with pytest.raises(ValueError):
+        VersionLiteral("asdf") <= VersionLiteral("1.9")
+
+
+def test_bad_compare_parts_up_to():
+    """Should raise ValueError when compare_parts_up_to called on literal version"""
+
+    with pytest.raises(ValueError):
+        VersionLiteral("asdf").compare_parts_up_to(VersionLiteral("asdf"), 1)
+
+
+@pytest.mark.parametrize(
+    "raw_version,is_literal,expected_count", [("adsf", True, 1), ("1.2.3.4", False, 4)]
+)
+def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_count: int):
+    """Should return correct number of parts given type of version"""
+    version = make_version(raw_version, is_literal)
+
+    assert version.get_version_parts_len() == expected_count
 
 
 @pytest.mark.parametrize(

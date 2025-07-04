@@ -2,8 +2,10 @@
 https://peps.python.org/pep-0508/"""
 
 import re
+from abc import ABC, abstractmethod
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
+from typing import Self
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 
@@ -20,7 +22,7 @@ _REQUIREMENT_RE: str = (
     r"^([a-z0-9](?:[a-z0-9\._-]*[a-z0-9])?)((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
 
-_NO_SEGMENT_VALUE: int = -1
+NO_SEGMENT_VALUE: int = -1
 
 
 class PreSegmentType(IntEnum):
@@ -32,13 +34,71 @@ class PreSegmentType(IntEnum):
     NONE = 3
 
 
-class Version:
+class Version(ABC):
+
+    __slots__ = ("raw_version",)
+
+    def __init__(self, raw_version: str):
+        self.raw_version: str = raw_version
+
+    def __str__(self) -> str:
+        return self.raw_version
+
+    @abstractmethod
+    def __eq__(self, other) -> bool:  # pragma: no cover
+        pass
+
+    @abstractmethod
+    def __gt__(self, other) -> bool:  # pragma: no cover
+        pass
+
+    @abstractmethod
+    def __ge__(self, other) -> bool:  # pragma: no cover
+        pass
+
+    @abstractmethod
+    def get_version_parts_len(self) -> int:  # pragma: no cover
+        """Returns number of parts in the version.
+        e.x. 1.2.3 returns 3"""
+        pass
+
+    @abstractmethod
+    def compare_parts_up_to(self, other: Self, count: int) -> bool:  # pragma: no cover
+        """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
+
+        If count is 2, then check "1.2" == "1.2" """
+        pass
+
+
+class VersionLiteral(Version):
+    """Represents a literal version, where equality
+    is strictly checked"""
+
+    __slots__ = ()
+
+    GT_LT_ERROR_MESSAGE: str = "Literal versions can't compare greater or less then"
+
+    def __eq__(self, other) -> bool:
+        return self.raw_version == other.raw_version
+
+    def __gt__(self, other) -> bool:
+        raise ValueError(self.GT_LT_ERROR_MESSAGE)
+
+    def __ge__(self, other) -> bool:
+        raise ValueError(self.GT_LT_ERROR_MESSAGE)
+
+    def get_version_parts_len(self) -> int:
+        return 1
+
+    def compare_parts_up_to(self, other: Self, count: int) -> bool:
+        raise ValueError("Literal versions can't compare up to")
+
+
+class VersionPep440(Version):
     """Represents a version as specified in pep440
     https://peps.python.org/pep-0440/"""
 
     __slots__ = (
-        "is_literal",
-        "raw_version",
         "release_version",
         "pre_segment_type",
         "pre_segment",
@@ -49,25 +109,13 @@ class Version:
     def __init__(
         self,
         raw_version: str,
-        is_literal: bool = False,
         keep_trailing_zeros: bool = False,
     ) -> None:
-        self.is_literal: bool = is_literal
-        self.raw_version: str
         self.release_version: tuple[int, ...]
         self.pre_segment_type: PreSegmentType
         self.pre_segment: int
         self.post_segment: int
         self.dev_segment: int
-
-        if is_literal:
-            self.raw_version = raw_version
-            self.release_version = tuple()
-            self.pre_segment_type = PreSegmentType.NONE
-            self.pre_segment = _NO_SEGMENT_VALUE
-            self.post_segment = _NO_SEGMENT_VALUE
-            self.dev_segment = _NO_SEGMENT_VALUE
-            return
 
         (
             self.release_version,
@@ -77,24 +125,18 @@ class Version:
             self.dev_segment,
         ) = parse_pep440_version(raw_version, keep_trailing_zeros)
 
-        self.raw_version = construct_pep440_version(
+        raw_version = construct_pep440_version(
             self.release_version,
             self.pre_segment_type,
             self.pre_segment,
             self.post_segment,
             self.dev_segment,
         )
-
-    def __str__(self) -> str:
-        return self.raw_version
+        super().__init__(raw_version)
 
     def __eq__(self, other) -> bool:
-        if self.is_literal and other.is_literal:
-            return self.raw_version == other.raw_version
-
         return (
-            self.is_literal == other.is_literal
-            and self.release_version == other.release_version
+            self.release_version == other.release_version
             and self.pre_segment == other.pre_segment
             and self.pre_segment_type == other.pre_segment_type
             and self.post_segment == other.post_segment
@@ -102,9 +144,6 @@ class Version:
         )
 
     def __gt__(self, other) -> bool:
-        if self.is_literal or other.is_literal:
-            raise ValueError("Literal versions can't be greater or less then")
-
         if self.release_version != other.release_version:
             return self.release_version > other.release_version
 
@@ -129,13 +168,10 @@ class Version:
     def __ge__(self, other) -> bool:
         return self > other or self == other
 
-    def compare_up_to(self, other: "Version", count: int) -> bool:
-        """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
+    def get_version_parts_len(self) -> int:
+        return len(self.release_version)
 
-        If count is 2, then check "1.2" == "1.2" """
-        if self.is_literal or other.is_literal:
-            raise ValueError("Literal versions can't compare parts")
-
+    def compare_parts_up_to(self, other: Self, count: int) -> bool:
         return self.release_version[:count] == other.release_version[:count]
 
 
@@ -160,12 +196,12 @@ class VersionRule:
         self._operator: str = operator
 
         is_literal: bool = self._use_literal_compare()
-        self._version = Version(version, is_literal, self._fuzzy_match)
+        self._version: Version = make_version(version, is_literal, self._fuzzy_match)
 
-        if self._operator == "~=" and len(self._version.release_version) < 2:
+        if self._operator == "~=" and self._version.get_version_parts_len() < 2:
             raise ValueError(
                 "Use of '~=' operator requires release version to have "
-                f"more than one segment, {self._version.release_version} has only one"
+                f"more than one segment, {self._version} has only one"
             )
 
     def __str__(self) -> str:
@@ -188,16 +224,16 @@ class VersionRule:
         is compliant with the rule this object represents"""
 
         is_literal: bool = self._use_literal_compare()
-        installed_version_parsed = Version(
+        installed_version_parsed = make_version(
             installed_version, is_literal, self._fuzzy_match
         )
 
         match self._operator:
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
-                compare_up_to: int = len(self._version.release_version) - 1
+                compare_up_to: int = self._version.get_version_parts_len() - 1
 
-                return self._version.compare_up_to(
+                return self._version.compare_parts_up_to(
                     installed_version_parsed, compare_up_to
                 ) and (installed_version_parsed >= self._version)
             case ">":
@@ -225,9 +261,9 @@ class VersionRule:
 
         # If fuzzy is true, only release version can be set
         if self._fuzzy_match:
-            compare_up_to: int = len(self._version.release_version)
+            compare_up_to: int = self._version.get_version_parts_len()
 
-            return self._version.compare_up_to(other, compare_up_to)
+            return self._version.compare_parts_up_to(other, compare_up_to)
 
         return self._version == other
 
@@ -262,6 +298,18 @@ class Requirement:
         installed_version: str = get_module_version(self.name)
 
         return all(rule.version_is_compliant(installed_version) for rule in self.rules)
+
+
+def make_version(
+    raw_version: str, is_literal: bool, keep_trailing_zeros: bool = False
+) -> Version:
+    """Returns correct version class based on is_literal.
+    keep_trailing_zeros is only passed if is_literal is False"""
+    return (
+        VersionLiteral(raw_version)
+        if is_literal
+        else VersionPep440(raw_version, keep_trailing_zeros)
+    )
 
 
 def parse_requirements_file(
@@ -334,10 +382,10 @@ def version_is_pep440_compliant(version: str) -> bool:
 
 def construct_pep440_version(
     release_version: tuple[int, ...],
-    pre_segment_type: PreSegmentType,
-    pre_segment: int,
-    post_segment: int,
-    dev_segment: int,
+    pre_segment_type: PreSegmentType = PreSegmentType.NONE,
+    pre_segment: int = NO_SEGMENT_VALUE,
+    post_segment: int = NO_SEGMENT_VALUE,
+    dev_segment: int = NO_SEGMENT_VALUE,
 ) -> str:
     """Given parts of a pep440 version, return a str
     of the version in the normalized form recommended
@@ -427,5 +475,5 @@ def _get_segment_value(parsed_segment: str | None) -> int:
     return (
         int(re.sub("[^0-9]", "", parsed_segment))
         if parsed_segment is not None
-        else _NO_SEGMENT_VALUE
+        else NO_SEGMENT_VALUE
     )
