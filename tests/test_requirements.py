@@ -97,13 +97,17 @@ def test_bad_compare_parts_up_to():
 
 
 @pytest.mark.parametrize(
-    "raw_version,is_literal,expected_count", [("adsf", True, 1), ("1.2.3.4", False, 4)]
+    "raw_version,is_literal,expected_count", [("adsf", True, 0), ("1.2.3.4", False, 4)]
 )
 def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_count: int):
     """Should return correct number of parts given type of version"""
     version = make_version(raw_version, is_literal)
 
-    assert version.get_version_parts_len() == expected_count
+    if is_literal:
+        with pytest.raises(ValueError):
+            version.get_version_parts_len()
+    else:
+        assert version.get_version_parts_len() == expected_count
 
 
 @pytest.mark.parametrize(

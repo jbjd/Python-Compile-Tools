@@ -9,7 +9,7 @@ from typing import Self
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 
-_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
+_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "===", "@"]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
@@ -77,6 +77,7 @@ class VersionLiteral(Version):
     __slots__ = ()
 
     GT_LT_ERROR_MESSAGE: str = "Literal versions can't compare greater or less then"
+    PARTS_ERROR_MESSAGE: str = "Literal versions don't have parts"
 
     def __eq__(self, other) -> bool:
         return self.raw_version == other.raw_version
@@ -88,10 +89,10 @@ class VersionLiteral(Version):
         raise ValueError(self.GT_LT_ERROR_MESSAGE)
 
     def get_version_parts_len(self) -> int:
-        return 1
+        raise ValueError(self.PARTS_ERROR_MESSAGE)
 
     def compare_parts_up_to(self, other: Self, count: int) -> bool:
-        raise ValueError("Literal versions can't compare up to")
+        raise ValueError(self.PARTS_ERROR_MESSAGE)
 
 
 class VersionPep440(Version):
@@ -229,6 +230,8 @@ class VersionRule:
         )
 
         match self._operator:
+            case "@":
+                raise NotImplementedError
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
                 compare_up_to: int = self._version.get_version_parts_len() - 1
@@ -269,7 +272,7 @@ class VersionRule:
 
     def _use_literal_compare(self) -> bool:
         """Returns True if compare should be strictly literal"""
-        return self._operator == "==="
+        return self._operator in ("===", "@")
 
 
 class Requirement:
