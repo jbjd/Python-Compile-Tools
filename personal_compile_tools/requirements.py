@@ -221,9 +221,15 @@ class VersionRule:
             and self._fuzzy_match == other._fuzzy_match
         )
 
-    def version_is_compliant(self, installed_version: str) -> bool:
-        """Returns True if provided version
-        is compliant with the rule this object represents"""
+    def version_is_compliant(
+        self, installed_version: str, fall_back: bool = True
+    ) -> bool:
+        """Returns True if provided version is compliant with the rule
+        this object represents.
+
+        If compliance can't be determined
+        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
+        fall_back is returned."""
 
         is_literal: bool = self._use_literal_compare()
         installed_version_parsed = make_version(
@@ -233,10 +239,10 @@ class VersionRule:
         match self._operator:
             case "@":
                 warnings.warn(
-                    f"Can't verify if source at {self._version} matches "
-                    f"installed version {installed_version_parsed}. Assuming True"
+                    f"Can't verify if source at {self._version} matches installed "
+                    f"version {installed_version_parsed}. Assuming {fall_back}"
                 )
-                return True
+                return fall_back
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
                 compare_up_to: int = self._version.get_version_parts_len() - 1
