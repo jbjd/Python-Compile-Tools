@@ -29,13 +29,18 @@ def test_parse_requirements_file():
         os.path.join(EXAMPLE_FOLDER, "requirements.txt")
     )
 
-    assert len(requirements) == 2
+    assert len(requirements) == 3
 
     assert requirements[0] == Requirement(
         "some_module", [VersionRule(">=", "1.2.3"), VersionRule("<=", "2.0.0")]
     )
 
     assert requirements[1] == Requirement("o", [VersionRule("==", "7.0.8")])
+
+    assert requirements[2] == Requirement(
+        "dir_ref",
+        [VersionRule("@", "git+https://github.com/jbjd/Compile-Tools@v1.0.0")],
+    )
 
 
 @pytest.mark.parametrize(
