@@ -2,3 +2,5 @@ some_module >= 1.2.3 <= 2.0.0
 
 o == \
 7.0.8
+
+dir_ref @ git+https://github.com/jbjd/Compile-Tools@v1.0.0

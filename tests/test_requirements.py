@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Literal
 from unittest.mock import patch
 
@@ -28,13 +29,18 @@ def test_parse_requirements_file():
         os.path.join(EXAMPLE_FOLDER, "requirements.txt")
     )
 
-    assert len(requirements) == 2
+    assert len(requirements) == 3
 
     assert requirements[0] == Requirement(
         "some_module", [VersionRule(">=", "1.2.3"), VersionRule("<=", "2.0.0")]
     )
 
     assert requirements[1] == Requirement("o", [VersionRule("==", "7.0.8")])
+
+    assert requirements[2] == Requirement(
+        "dir_ref",
+        [VersionRule("@", "git+https://github.com/jbjd/Compile-Tools@v1.0.0")],
+    )
 
 
 @pytest.mark.parametrize(
@@ -97,13 +103,17 @@ def test_bad_compare_parts_up_to():
 
 
 @pytest.mark.parametrize(
-    "raw_version,is_literal,expected_count", [("adsf", True, 1), ("1.2.3.4", False, 4)]
+    "raw_version,is_literal,expected_count", [("adsf", True, 0), ("1.2.3.4", False, 4)]
 )
 def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_count: int):
     """Should return correct number of parts given type of version"""
     version = make_version(raw_version, is_literal)
 
-    assert version.get_version_parts_len() == expected_count
+    if is_literal:
+        with pytest.raises(ValueError):
+            version.get_version_parts_len()
+    else:
+        assert version.get_version_parts_len() == expected_count
 
 
 @pytest.mark.parametrize(
@@ -314,6 +324,30 @@ def test_arbitrary_equality_operator(
     rule = VersionRule(ARBITRARY_EQUALITY_OP, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "version,installed_version,expected_compliance",
+    [
+        ("git+https://github.com/pypa/pip.git@7921be1", "1.4.5", True),
+        ("file:///c:/path/to/a/file", "1.4.5", False),
+    ],
+)
+def test_direct_reference_operator(
+    version: str, installed_version: str, expected_compliance: bool
+):
+    """Should return correct bool if installed version is greater than version"""
+
+    DIRECT_REFERENCE_OP = "@"
+
+    rule = VersionRule(DIRECT_REFERENCE_OP, version)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Can't verify if source at * ")
+        assert (
+            rule.version_is_compliant(installed_version, expected_compliance)
+            is expected_compliance
+        )
 
 
 @pytest.mark.parametrize(
