@@ -222,7 +222,10 @@ class VersionRule:
         )
 
     def version_is_compliant(
-        self, installed_version: str, fall_back: bool = True
+        self,
+        installed_version: str,
+        fall_back: bool = True,
+        warn_cannot_verify: bool = True,
     ) -> bool:
         """Returns True if provided version is compliant with the rule
         this object represents.
@@ -238,10 +241,11 @@ class VersionRule:
 
         match self._operator:
             case "@":
-                warnings.warn(
-                    f"Can't verify if source at {self._version} matches installed "
-                    f"version {installed_version_parsed}. Assuming {fall_back}"
-                )
+                if warn_cannot_verify:
+                    warnings.warn(
+                        f"Can't verify if source at {self._version} matches installed "
+                        f"version {installed_version_parsed}. Assuming {fall_back}"
+                    )
                 return fall_back
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
