@@ -36,6 +36,7 @@ class PreSegmentType(IntEnum):
 
 
 class Version(ABC):
+    """Base class for representing module versions"""
 
     __slots__ = ("raw_version",)
 
@@ -61,14 +62,12 @@ class Version(ABC):
     def get_version_parts_len(self) -> int:  # pragma: no cover
         """Returns number of parts in the version.
         e.x. 1.2.3 returns 3"""
-        pass
 
     @abstractmethod
     def compare_parts_up_to(self, other: Self, count: int) -> bool:  # pragma: no cover
         """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
 
         If count is 2, then check "1.2" == "1.2" """
-        pass
 
 
 class VersionLiteral(Version):
@@ -164,8 +163,8 @@ class VersionPep440(Version):
         # for having a lesser value
         if self.dev_segment >= 0 and other.dev_segment >= 0:
             return self.dev_segment > other.dev_segment
-        else:
-            return self.dev_segment < other.dev_segment
+
+        return self.dev_segment < other.dev_segment
 
     def __ge__(self, other) -> bool:
         return self > other or self == other
@@ -493,12 +492,12 @@ def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
     """Returns the type of pre-release based on the parsed segment"""
     if parsed_segment is None:
         return PreSegmentType.NONE
-    elif parsed_segment.startswith("a"):
+    if parsed_segment.startswith("a"):
         return PreSegmentType.ALPHA
-    elif parsed_segment.startswith("b"):
+    if parsed_segment.startswith("b"):
         return PreSegmentType.BETA
-    else:
-        return PreSegmentType.CANDIDATE
+
+    return PreSegmentType.CANDIDATE
 
 
 def _get_segment_value(parsed_segment: str | None) -> int:
