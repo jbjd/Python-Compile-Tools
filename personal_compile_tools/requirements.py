@@ -230,7 +230,7 @@ class VersionRule:
         """Returns True if provided version is compliant with the rule
         this object represents.
 
-        If compliance can't be determined
+        If compliance can't be verified
         e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
         fall_back is returned."""
 
@@ -309,13 +309,23 @@ class Requirement:
             and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))
         )
 
-    def matches_installed_version(self) -> bool:
+    def matches_installed_version(
+        self, fall_back: bool = True, warn_cannot_verify: bool = True
+    ) -> bool:
         """Returns True when this dependency's version rules match the installed
         version in current python interpreter.
-        Raises importlib.metadata.PackageNotFoundError if not present"""
+        Raises importlib.metadata.PackageNotFoundError if not present
+
+        If compliance can't be verified
+        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
+        fall_back is returned."""
+
         installed_version: str = get_module_version(self.name)
 
-        return all(rule.version_is_compliant(installed_version) for rule in self.rules)
+        return all(
+            rule.version_is_compliant(installed_version, fall_back, warn_cannot_verify)
+            for rule in self.rules
+        )
 
 
 def make_version(
