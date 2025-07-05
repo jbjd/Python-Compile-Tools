@@ -2,6 +2,7 @@
 https://peps.python.org/pep-0508/"""
 
 import re
+import warnings
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
@@ -9,7 +10,7 @@ from typing import Self
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 
-_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "==="]
+_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "===", "@"]
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
 
@@ -77,6 +78,7 @@ class VersionLiteral(Version):
     __slots__ = ()
 
     GT_LT_ERROR_MESSAGE: str = "Literal versions can't compare greater or less then"
+    PARTS_ERROR_MESSAGE: str = "Literal versions don't have parts"
 
     def __eq__(self, other) -> bool:
         return self.raw_version == other.raw_version
@@ -88,10 +90,10 @@ class VersionLiteral(Version):
         raise ValueError(self.GT_LT_ERROR_MESSAGE)
 
     def get_version_parts_len(self) -> int:
-        return 1
+        raise ValueError(self.PARTS_ERROR_MESSAGE)
 
     def compare_parts_up_to(self, other: Self, count: int) -> bool:
-        raise ValueError("Literal versions can't compare up to")
+        raise ValueError(self.PARTS_ERROR_MESSAGE)
 
 
 class VersionPep440(Version):
@@ -219,9 +221,18 @@ class VersionRule:
             and self._fuzzy_match == other._fuzzy_match
         )
 
-    def version_is_compliant(self, installed_version: str) -> bool:
-        """Returns True if provided version
-        is compliant with the rule this object represents"""
+    def version_is_compliant(
+        self,
+        installed_version: str,
+        fall_back: bool = True,
+        warn_cannot_verify: bool = True,
+    ) -> bool:
+        """Returns True if provided version is compliant with the rule
+        this object represents.
+
+        If compliance can't be verified
+        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
+        fall_back is returned."""
 
         is_literal: bool = self._use_literal_compare()
         installed_version_parsed = make_version(
@@ -229,6 +240,13 @@ class VersionRule:
         )
 
         match self._operator:
+            case "@":
+                if warn_cannot_verify:
+                    warnings.warn(
+                        f"Can't verify if source at {self._version} matches installed "
+                        f"version {installed_version_parsed}. Assuming {fall_back}"
+                    )
+                return fall_back
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5,== 1.4.*
                 compare_up_to: int = self._version.get_version_parts_len() - 1
@@ -269,7 +287,7 @@ class VersionRule:
 
     def _use_literal_compare(self) -> bool:
         """Returns True if compare should be strictly literal"""
-        return self._operator == "==="
+        return self._operator in ("===", "@")
 
 
 class Requirement:
@@ -291,13 +309,23 @@ class Requirement:
             and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))
         )
 
-    def matches_installed_version(self) -> bool:
+    def matches_installed_version(
+        self, fall_back: bool = True, warn_cannot_verify: bool = True
+    ) -> bool:
         """Returns True when this dependency's version rules match the installed
         version in current python interpreter.
-        Raises importlib.metadata.PackageNotFoundError if not present"""
+        Raises importlib.metadata.PackageNotFoundError if not present
+
+        If compliance can't be verified
+        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
+        fall_back is returned."""
+
         installed_version: str = get_module_version(self.name)
 
-        return all(rule.version_is_compliant(installed_version) for rule in self.rules)
+        return all(
+            rule.version_is_compliant(installed_version, fall_back, warn_cannot_verify)
+            for rule in self.rules
+        )
 
 
 def make_version(
@@ -354,14 +382,18 @@ def parse_requirement(requirement: str) -> Requirement:
     name: str = search_result.group(1)
     version_rules_unparsed: str = search_result.group(2)
 
-    split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
-    )
+    version_rules: list[VersionRule]
+    if version_rules_unparsed[0] == "@":
+        version_rules = [VersionRule("@", version_rules_unparsed[1:])]
+    else:
+        split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
+            _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
+        )
 
-    version_rules: list[VersionRule] = [
-        VersionRule(operator, version)
-        for operator, version in split_version_rules_unparsed
-    ]
+        version_rules = [
+            VersionRule(operator, version)
+            for operator, version in split_version_rules_unparsed
+        ]
 
     return Requirement(name, version_rules)
 
