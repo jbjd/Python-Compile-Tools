@@ -2,11 +2,11 @@
 https://peps.python.org/pep-0508/"""
 
 import re
+import warnings
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
 from typing import Self
-import warnings
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 

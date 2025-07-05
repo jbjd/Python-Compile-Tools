@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Literal
 from unittest.mock import patch
 
@@ -318,6 +319,30 @@ def test_arbitrary_equality_operator(
     rule = VersionRule(ARBITRARY_EQUALITY_OP, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
+
+
+@pytest.mark.parametrize(
+    "version,installed_version,expected_compliance",
+    [
+        ("git+https://github.com/pypa/pip.git@7921be1", "1.4.5", True),
+        ("file:///c:/path/to/a/file", "1.4.5", False),
+    ],
+)
+def test_direct_reference_operator(
+    version: str, installed_version: str, expected_compliance: bool
+):
+    """Should return correct bool if installed version is greater than version"""
+
+    DIRECT_REFERENCE_OP = "@"
+
+    rule = VersionRule(DIRECT_REFERENCE_OP, version)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Can't verify if source at * ")
+        assert (
+            rule.version_is_compliant(installed_version, expected_compliance)
+            is expected_compliance
+        )
 
 
 @pytest.mark.parametrize(
