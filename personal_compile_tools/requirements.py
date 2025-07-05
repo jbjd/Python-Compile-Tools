@@ -368,14 +368,18 @@ def parse_requirement(requirement: str) -> Requirement:
     name: str = search_result.group(1)
     version_rules_unparsed: str = search_result.group(2)
 
-    split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-        _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
-    )
+    version_rules: list[VersionRule]
+    if version_rules_unparsed[0] == "@":
+        version_rules = [VersionRule("@", version_rules_unparsed[1:])]
+    else:
+        split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
+            _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
+        )
 
-    version_rules: list[VersionRule] = [
-        VersionRule(operator, version)
-        for operator, version in split_version_rules_unparsed
-    ]
+        version_rules = [
+            VersionRule(operator, version)
+            for operator, version in split_version_rules_unparsed
+        ]
 
     return Requirement(name, version_rules)
 
