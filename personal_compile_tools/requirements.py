@@ -9,10 +9,9 @@ from importlib.metadata import version as get_module_version
 from typing import Self
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
+from personal_compile_tools.requirement_operators import VALID_OPERATORS, Operators
 
-_VALID_OPERATORS: list[str] = ["<", "<=", "!=", "==", ">=", ">", "~=", "===", "@"]
-
-_VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
+_VALID_OPERATOR_RE: str = "|".join(VALID_OPERATORS)
 
 _PEP440_RE: str = (
     r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
@@ -181,17 +180,22 @@ class VersionRule:
 
     __slots__ = ("_fuzzy_match", "_operator", "_version")
 
+    FUZZY_MATCH_ENDING: str = ".*"
+
     def __init__(self, operator: str, version: str) -> None:
-        if operator not in _VALID_OPERATORS:
+        if operator not in VALID_OPERATORS:
             raise ValueError(f"Invalid operator {operator}")
 
-        if version.endswith(".*"):
+        if version.endswith(self.FUZZY_MATCH_ENDING):
             version = version[:-2]
             self._fuzzy_match = True
         else:
             self._fuzzy_match = False
 
-        if self._fuzzy_match and operator not in ("==", "!="):
+        if self._fuzzy_match and operator not in (
+            Operators.EQUALS,
+            Operators.NOT_EQUALS,
+        ):
             raise ValueError(".* can only be used with '==' or '!=' operators")
 
         self._operator: str = operator
@@ -209,7 +213,7 @@ class VersionRule:
         rule: str = f"{self._operator}{self._version}"
 
         if self._fuzzy_match:
-            rule += ".*"
+            rule += self.FUZZY_MATCH_ENDING
 
         return rule
 
@@ -219,6 +223,14 @@ class VersionRule:
             and self._version == other._version
             and self._fuzzy_match == other._fuzzy_match
         )
+
+    @property
+    def operator(self) -> str:
+        return self._operator
+
+    @property
+    def version(self) -> Version:
+        return self._version
 
     def version_is_compliant(
         self,
