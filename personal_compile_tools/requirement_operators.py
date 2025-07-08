@@ -4,15 +4,15 @@ from enum import StrEnum
 
 
 class Operators(StrEnum):
-    EQUALS: str = "=="
-    NOT_EQUALS: str = "!="
-    GT: str = ">"
-    GT_OR_EQUALS: str = ">="
-    LT: str = "<"
-    LT_OR_EQUALS: str = "<="
-    COMPATIBLE: str = "~="
-    ARBITRARY_EQUALITY: str = "==="
-    DIRECT_REFERENCE: str = "@"
+    EQUALS = "=="
+    NOT_EQUALS = "!="
+    GT = ">"
+    GT_OR_EQUALS = ">="
+    LT = "<"
+    LT_OR_EQUALS = "<="
+    COMPATIBLE = "~="
+    ARBITRARY_EQUALITY = "==="
+    DIRECT_REFERENCE = "@"
 
 
 VALID_OPERATORS: list[str] = [

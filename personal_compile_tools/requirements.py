@@ -229,7 +229,7 @@ class VersionRule:
         return self._operator
 
     @property
-    def version(self) -> str:
+    def version(self) -> Version:
         return self._version
 
     def version_is_compliant(
