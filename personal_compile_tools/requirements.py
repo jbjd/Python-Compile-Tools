@@ -1,13 +1,13 @@
 """Classes and functions to help analyze requirements files.
 https://peps.python.org/pep-0508/"""
 
+import platform
 import re
 import warnings
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from importlib.metadata import version as get_module_version
 from typing import Self
-import platform
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
 from personal_compile_tools.requirement_operators import (
