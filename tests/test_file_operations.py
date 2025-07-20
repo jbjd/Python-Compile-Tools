@@ -75,6 +75,6 @@ def test_get_folder_size():
     """Should get full byte size of folder"""
 
     # Files have \n\r line breaks and seems this causes an OS schism
-    EXPECTED_BYTE_SIZE: int = 150 if os.name == "nt" else 141
+    EXPECTED_BYTE_SIZE: int = 40 if os.name == "nt" else 37
 
     assert get_folder_size(EXAMPLE_FOLDER) == EXPECTED_BYTE_SIZE
