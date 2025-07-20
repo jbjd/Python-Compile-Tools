@@ -396,9 +396,9 @@ def parse_requirements(
             if not env_valid:
                 continue
 
-        line: str = split_line[0]
+        requirement_line: str = split_line[0]
 
-        requirement: Requirement = parse_requirement(line)
+        requirement: Requirement = parse_requirement(requirement_line)
         requirements.append(requirement)
 
     return requirements
