@@ -1,6 +1,7 @@
 """Classes and functions to help analyze requirements files.
 https://peps.python.org/pep-0508/"""
 
+import platform
 import re
 import warnings
 from abc import ABC, abstractmethod
@@ -9,9 +10,16 @@ from importlib.metadata import version as get_module_version
 from typing import Self
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
-from personal_compile_tools.requirement_operators import VALID_OPERATORS, Operators
+from personal_compile_tools.requirement_operators import (
+    VALID_ENV_MARKER_OPERATORS,
+    VALID_OPERATORS,
+    EnvMarkerExprs,
+    EnvMarkerOperators,
+    Operators,
+)
 
 _VALID_OPERATOR_RE: str = "|".join(VALID_OPERATORS)
+_VALID_ENV_MARKER_OPERATORS_RE = "|".join(VALID_ENV_MARKER_OPERATORS)
 
 _PEP440_RE: str = (
     r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
@@ -21,6 +29,8 @@ _OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
 _REQUIREMENT_RE: str = (
     r"^([a-z0-9](?:[a-z0-9\._-]*[a-z0-9])?)((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
+
+_ENV_MARKER_RE: str = r"^\s*(.+?)(" + _VALID_ENV_MARKER_OPERATORS_RE + r")(.+?)\s*$"
 
 NO_SEGMENT_VALUE: int = -1
 
@@ -362,19 +372,33 @@ def parse_requirements_file(
     return parse_requirements(file_contents)
 
 
-def parse_requirements(raw_requirements: str) -> list[Requirement]:
+def parse_requirements(
+    raw_requirements: str, ignore_based_on_env_marker: bool = True
+) -> list[Requirement]:
     """Given contents of a requirements file, returns a list of
-    objects representing the dependencies"""
+    objects representing the dependencies
+
+    If ignore_based_on_env_marker is true, will not include requirements
+    that do not match env. Such as excluding "...;platform_system == 'Windows'"
+    when running on Linux"""
 
     requirements: list[Requirement] = []
 
     # regex slipt on \n without previous \
     raw_requirements = raw_requirements.strip()
     for line in re.split(r"(?<=[^\\])\s*\n", raw_requirements):
-        # For now, throw out env marker
-        line = line.split(";")[0]
+        split_line: list[str] = line.split(";")
 
-        requirement: Requirement = parse_requirement(line)
+        if ignore_based_on_env_marker and len(split_line) > 1:
+            env_markers: str = split_line[1]
+            env_valid: bool = parse_env_marker(env_markers)
+
+            if not env_valid:
+                continue
+
+        requirement_line: str = split_line[0]
+
+        requirement: Requirement = parse_requirement(requirement_line)
         requirements.append(requirement)
 
     return requirements
@@ -407,6 +431,60 @@ def parse_requirement(requirement: str) -> Requirement:
         ]
 
     return Requirement(name, version_rules)
+
+
+def parse_env_marker(env_markers: str) -> bool:
+    """Parsed an env marker as specified here:
+    https://peps.python.org/pep-0345/
+
+    Returns True if marker is valid in current env"""
+
+    for env_marker in re.split(r" (or|and) ", env_markers):
+        search_result = re.search(_ENV_MARKER_RE, env_marker, re.IGNORECASE)
+
+        if search_result is None:
+            raise ValueError(f"Invalid env marker {env_marker}")
+
+        try:
+            left: str = env_marker_expr_to_value(search_result.group(1).strip())
+            right: str = env_marker_expr_to_value(search_result.group(3).strip())
+        except ValueError:
+            continue  # TODO: Handle all env var and no longer catch here
+
+        operator: str = search_result.group(2)
+
+        env_valid: bool
+
+        match operator:
+            case EnvMarkerOperators.EQUALS:
+                env_valid = left == right
+            case EnvMarkerOperators.NOT_EQUALS:
+                env_valid = left != right
+            case EnvMarkerOperators.IN:
+                env_valid = left in right
+            case EnvMarkerOperators.NOT_IN:
+                env_valid = left not in right
+
+        if not env_valid:
+            return False
+
+    return True
+
+
+def env_marker_expr_to_value(expr: str) -> str:
+    """Given the expr as part of an env marker,
+    update to its value in the current env such as
+    'platform_system' -> 'Windows'"""
+
+    if len(expr) > 1 and expr[0] == expr[-1] and expr[0] in "'\"" and expr[-1] in "'\"":
+        # its wrapped in quotes, so its a string
+        return expr[1:-1]
+
+    match expr:
+        case EnvMarkerExprs.PLATFORM_SYS:
+            return platform.system()
+        case _:
+            raise ValueError(f"Unknown env var {expr}")
 
 
 def normalize_version(version: str) -> str:

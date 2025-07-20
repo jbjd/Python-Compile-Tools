@@ -4,3 +4,5 @@ o == \
 7.0.8
 
 dir_ref @ git+https://github.com/jbjd/Compile-Tools@v1.0.0
+
+should_not_show_up == 1.3; platform_system != "Windows"

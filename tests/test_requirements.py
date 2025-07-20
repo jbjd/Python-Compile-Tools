@@ -15,11 +15,12 @@ from personal_compile_tools.requirements import (
     construct_pep440_version,
     make_version,
     normalize_version,
+    parse_env_marker,
     parse_requirement,
     parse_requirements_file,
     version_is_pep440_compliant,
 )
-from tests.conftest import EXAMPLE_FOLDER
+from tests.conftest import REQUIREMENTS_FOLDER
 
 _MODULE_NAME = "personal_compile_tools.requirements"
 
@@ -27,31 +28,52 @@ _MODULE_NAME = "personal_compile_tools.requirements"
 def test_parse_requirements_file():
     """Should read a requirements file, handle backslash, and correctly parse it"""
 
-    requirements: list[Requirement] = parse_requirements_file(
-        os.path.join(EXAMPLE_FOLDER, "requirements.txt")
-    )
+    with patch(f"{_MODULE_NAME}.platform.system", lambda: "Windows"):
 
-    assert len(requirements) == 3
+        requirements: list[Requirement] = parse_requirements_file(
+            os.path.join(REQUIREMENTS_FOLDER, "requirements.txt")
+        )
 
-    assert requirements[0] == Requirement(
-        "some_module",
-        [
-            VersionRule(Operators.GT_OR_EQUALS, "1.2.3"),
-            VersionRule(Operators.LT_OR_EQUALS, "2.0.0"),
-        ],
-    )
+        assert len(requirements) == 3
 
-    assert requirements[1] == Requirement("o", [VersionRule(Operators.EQUALS, "7.0.8")])
+        assert requirements[0] == Requirement(
+            "some_module",
+            [
+                VersionRule(Operators.GT_OR_EQUALS, "1.2.3"),
+                VersionRule(Operators.LT_OR_EQUALS, "2.0.0"),
+            ],
+        )
 
-    assert requirements[2] == Requirement(
-        "dir_ref",
-        [
-            VersionRule(
-                Operators.DIRECT_REFERENCE,
-                "git+https://github.com/jbjd/Compile-Tools@v1.0.0",
-            )
-        ],
-    )
+        assert requirements[1] == Requirement(
+            "o", [VersionRule(Operators.EQUALS, "7.0.8")]
+        )
+
+        assert requirements[2] == Requirement(
+            "dir_ref",
+            [
+                VersionRule(
+                    Operators.DIRECT_REFERENCE,
+                    "git+https://github.com/jbjd/Compile-Tools@v1.0.0",
+                )
+            ],
+        )
+
+
+def test_parse_env_marker():
+    ENV_MARKER: str = ' platform_system =="Windows"'
+
+    with patch(f"{_MODULE_NAME}.platform.system", lambda: "Windows"):
+        assert parse_env_marker(ENV_MARKER)
+
+    with patch(f"{_MODULE_NAME}.platform.system", lambda: "Linux"):
+        assert not parse_env_marker(ENV_MARKER)
+
+
+def test_parse_env_marker_bad_input():
+    ENV_MARKER: str = ' not_env_marker =="Windows"'
+
+    # TODO: Handle all env var and instead check raise ValueError
+    assert parse_env_marker(ENV_MARKER)
 
 
 @pytest.mark.parametrize(
@@ -114,7 +136,7 @@ def test_bad_compare_parts_up_to():
 
 
 @pytest.mark.parametrize(
-    "raw_version,is_literal,expected_count", [("adsf", True, 0), ("1.2.3.4", False, 4)]
+    "raw_version,is_literal,expected_count", [("asdf", True, 0), ("1.2.3.4", False, 4)]
 )
 def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_count: int):
     """Should return correct number of parts given type of version"""
