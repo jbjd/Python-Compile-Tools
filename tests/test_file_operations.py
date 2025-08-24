@@ -1,3 +1,5 @@
+"""Tests for the file_operations module"""
+
 import os
 from unittest.mock import patch
 
@@ -75,6 +77,6 @@ def test_get_folder_size():
     """Should get full byte size of folder"""
 
     # Files have \n\r line breaks and seems this causes an OS schism
-    EXPECTED_BYTE_SIZE: int = 40 if os.name == "nt" else 37
+    expected_byte_size: int = 40 if os.name == "nt" else 37
 
-    assert get_folder_size(EXAMPLE_FOLDER) == EXPECTED_BYTE_SIZE
+    assert get_folder_size(EXAMPLE_FOLDER) == expected_byte_size

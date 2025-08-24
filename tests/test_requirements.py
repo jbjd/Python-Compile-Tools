@@ -1,4 +1,4 @@
-"""Test requirements.py to verify proper parsing, normalization, and equality checks"""
+"""Tests for the requirements module"""
 
 import os
 import warnings
@@ -60,20 +60,21 @@ def test_parse_requirements_file():
 
 
 def test_parse_env_marker():
-    ENV_MARKER: str = ' platform_system =="Windows"'
+    """Should return True if env markers valid for current env"""
+    env_marker: str = ' platform_system =="Windows"'
 
     with patch(f"{_MODULE_NAME}.platform.system", lambda: "Windows"):
-        assert parse_env_marker(ENV_MARKER)
+        assert parse_env_marker(env_marker)
 
     with patch(f"{_MODULE_NAME}.platform.system", lambda: "Linux"):
-        assert not parse_env_marker(ENV_MARKER)
+        assert not parse_env_marker(env_marker)
 
 
 def test_parse_env_marker_bad_input():
-    ENV_MARKER: str = ' not_env_marker =="Windows"'
+    """Should ignore invalid env markers"""
+    env_marker: str = ' not_env_marker =="Windows"'
 
-    # TODO: Handle all env var and instead check raise ValueError
-    assert parse_env_marker(ENV_MARKER)
+    assert parse_env_marker(env_marker)
 
 
 @pytest.mark.parametrize(
@@ -122,10 +123,10 @@ def test_bad_comparison():
     """Should raise ValueError when literal version is compared < or >"""
 
     with pytest.raises(ValueError):
-        VersionLiteral("asdf") > VersionLiteral("1.9")
+        _ = VersionLiteral("asdf") > VersionLiteral("1.9")
 
     with pytest.raises(ValueError):
-        VersionLiteral("asdf") <= VersionLiteral("1.9")
+        _ = VersionLiteral("asdf") <= VersionLiteral("1.9")
 
 
 def test_bad_compare_parts_up_to():

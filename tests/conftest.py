@@ -1,3 +1,6 @@
+"""Common file for pytest framework to define test fixtures, also used to
+define other constants used within tests"""
+
 import os
 
 WORKING_DIR: str = os.path.dirname(__file__)
