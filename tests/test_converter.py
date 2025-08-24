@@ -1,3 +1,5 @@
+"""Tests for the converters module"""
+
 import pytest
 
 from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str

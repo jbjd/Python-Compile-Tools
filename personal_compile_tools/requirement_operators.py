@@ -4,6 +4,8 @@ from enum import StrEnum
 
 
 class Operators(StrEnum):
+    """Valid comparison operators that can be used in a requirements file"""
+
     EQUALS = "=="
     NOT_EQUALS = "!="
     GT = ">"
@@ -29,6 +31,9 @@ VALID_OPERATORS: list[str] = [
 
 
 class EnvMarkerOperators(StrEnum):
+    """Valid comparison operators that can be used for env markers
+    in a requirements file"""
+
     EQUALS = "=="
     NOT_EQUALS = "!="
     IN = " in "
@@ -44,4 +49,7 @@ VALID_ENV_MARKER_OPERATORS: list[str] = [
 
 
 class EnvMarkerExprs(StrEnum):
+    """Valid expressions that can be used for env markers
+    in a requirements file"""
+
     PLATFORM_SYS = "platform_system"

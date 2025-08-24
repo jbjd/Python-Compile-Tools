@@ -1,3 +1,6 @@
 [MESSAGES CONTROL]
 
-ignore=build
+ignore=setup.py,build
+
+disable=line-too-long,  # Checked by flake
+        no-member,      # Checked by mypy
