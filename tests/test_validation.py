@@ -1,6 +1,6 @@
 """Tests for the validation module"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -19,11 +19,6 @@ _is_root_cases: list = [
 @pytest.mark.parametrize("os_name,return_value,expected_is_root", _is_root_cases)
 def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
     """Should return correct bool given OS native response code"""
-    ctypes = MagicMock()
-    ctypes.windll = MagicMock()
-    ctypes.windll.shell32 = MagicMock()
-    ctypes.windll.shell32.IsUserAnAdmin = MagicMock()
-    ctypes.windll.shell32.IsUserAnAdmin.return_value = return_value
 
     with (
         patch(f"{_MODULE_NAME}.os.name", os_name),
@@ -32,9 +27,10 @@ def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
             lambda: return_value,
             create=True,
         ),
-        patch(f"{_MODULE_NAME}.ctypes", ctypes, create=True),
+        patch(
+            f"{_MODULE_NAME}.ctypes.windll.shell32.IsUserAnAdmin",
+            lambda: return_value,
+            create=True,
+        ),
     ):
-        if expected_is_root:
-            assert is_root()
-        else:
-            assert not is_root()
+        assert is_root() is expected_is_root
