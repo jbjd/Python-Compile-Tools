@@ -20,9 +20,6 @@ _is_root_cases: list = [
 def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
     """Should return correct bool given OS native response code"""
     ctypes = MagicMock()
-    ctypes.windll = MagicMock()
-    ctypes.windll.shell32 = MagicMock()
-    ctypes.windll.shell32.IsUserAnAdmin = MagicMock()
     ctypes.windll.shell32.IsUserAnAdmin.return_value = return_value
 
     with (
@@ -34,7 +31,4 @@ def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
         ),
         patch(f"{_MODULE_NAME}.ctypes", ctypes, create=True),
     ):
-        if expected_is_root:
-            assert is_root()
-        else:
-            assert not is_root()
+        assert is_root() is expected_is_root
