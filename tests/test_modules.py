@@ -1,5 +1,6 @@
-from personal_compile_tools.modules import get_module_file_path
 from unittest.mock import MagicMock, patch
+
+from personal_compile_tools.modules import get_module_file_path
 
 _MODULE_NAME: str = "personal_compile_tools.modules"
 
