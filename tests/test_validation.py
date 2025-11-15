@@ -27,6 +27,7 @@ def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
             lambda: return_value,
             create=True,
         ),
+        patch(f"{_MODULE_NAME}.ctypes", create=True),  # Hack for non-windows systems
         patch(
             f"{_MODULE_NAME}.ctypes.windll.shell32.IsUserAnAdmin",
             lambda: return_value,
