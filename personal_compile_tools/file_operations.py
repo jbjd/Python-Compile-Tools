@@ -46,10 +46,13 @@ def get_folder_size(folder: str) -> int:
     return sum(os.stat(file).st_size for file in walk_folder(folder))
 
 
-def walk_folder(folder: str) -> Iterator[str]:
+def walk_folder(
+    folder: str, recursive: bool = True, folders_to_ignore: Iterable | None = None
+) -> Iterator[str]:
     """Edited version of os.walk to yield full paths of files within
     a folder and all sub folders"""
     folders_to_visit_stack: list[str] = [folder]
+    ignored_folders: Iterable = [] if folders_to_ignore is None else folders_to_ignore
 
     while folders_to_visit_stack:
         top_folder = folders_to_visit_stack.pop()
@@ -73,8 +76,9 @@ def walk_folder(folder: str) -> Iterator[str]:
                     is_folder = False
 
                 if is_folder:
-                    sub_folders.append(entry.path)
+                    if recursive and entry.name not in ignored_folders:
+                        sub_folders.append(entry.path)
                 else:
-                    yield os.path.join(top_folder, entry.name)
+                    yield entry.path
 
         folders_to_visit_stack += sub_folders
