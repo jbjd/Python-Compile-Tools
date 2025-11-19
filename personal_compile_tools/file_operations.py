@@ -47,12 +47,14 @@ def get_folder_size(folder: str) -> int:
 
 
 def walk_folder(
-    folder: str, recursive: bool = True, folders_to_ignore: Iterable | None = None
+    folder: str, recursive: bool = True, folders_to_ignore: Iterable[str] | None = None
 ) -> Iterator[str]:
     """Edited version of os.walk to yield full paths of files within
     a folder and all sub folders"""
     folders_to_visit_stack: list[str] = [folder]
-    ignored_folders: Iterable = [] if folders_to_ignore is None else folders_to_ignore
+    ignored_folders: Iterable[str] = (
+        [] if folders_to_ignore is None else folders_to_ignore
+    )
 
     while folders_to_visit_stack:
         top_folder = folders_to_visit_stack.pop()
