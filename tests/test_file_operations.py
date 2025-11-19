@@ -11,8 +11,9 @@ from personal_compile_tools.file_operations import (
     delete_folder,
     delete_folders,
     get_folder_size,
+    walk_folder,
 )
-from tests.conftest import EXAMPLE_FOLDER
+from tests.conftest import EXAMPLE_FOLDER, WORKING_DIR
 
 _MODULE_NAME: str = "personal_compile_tools.file_operations"
 
@@ -80,3 +81,35 @@ def test_get_folder_size():
     expected_byte_size: int = 40 if os.name == "nt" else 37
 
     assert get_folder_size(EXAMPLE_FOLDER) == expected_byte_size
+
+
+def test_walk_folder():
+    folders: list[str] = [folder for folder in walk_folder(EXAMPLE_FOLDER)]
+
+    assert len(folders) == 3
+    assert _norm_test_path(folders[0]) == "/test_folder/and_now_for.txt"
+    assert _norm_test_path(folders[1]) == "/test_folder/subfolder/.hidden"
+    assert _norm_test_path(folders[2]) == "/test_folder/subfolder/foo.txt"
+
+
+def test_walk_folder_non_recursive():
+    folders: list[str] = [
+        folder for folder in walk_folder(EXAMPLE_FOLDER, recursive=False)
+    ]
+
+    assert len(folders) == 1
+    assert _norm_test_path(folders[0]) == "/test_folder/and_now_for.txt"
+
+
+def test_walk_folder_with_ignored_folder():
+    folders: list[str] = [
+        folder
+        for folder in walk_folder(EXAMPLE_FOLDER, folders_to_ignore=["subfolder"])
+    ]
+
+    assert len(folders) == 1
+    assert _norm_test_path(folders[0]) == "/test_folder/and_now_for.txt"
+
+
+def _norm_test_path(path: str) -> str:
+    return path.removeprefix(WORKING_DIR).replace("\\", "/")
