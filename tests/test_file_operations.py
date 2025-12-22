@@ -1,7 +1,9 @@
 """Tests for the file_operations module"""
 
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 from personal_compile_tools.file_operations import (
     copy_file,
@@ -11,7 +13,9 @@ from personal_compile_tools.file_operations import (
     delete_folder,
     delete_folders,
     get_folder_size,
+    read_file_utf8,
     walk_folder,
+    write_file_utf8,
 )
 from tests.conftest import EXAMPLE_FOLDER, WORKING_DIR
 
@@ -72,6 +76,39 @@ def test_delete_folders():
         assert mock_delete.call_args_list[0].kwargs == {"ignore_errors": True}
         assert mock_delete.call_args_list[1].args == ("bar",)
         assert mock_delete.call_args_list[1].kwargs == {"ignore_errors": True}
+
+
+def test_read_file_utf8():
+    """Should open the file as UTF-8 and read"""
+    path: str = "some/path"
+    content: str = "test"
+
+    with patch("builtins.open", mock_open(read_data=content)) as mock_builtins_open:
+        assert read_file_utf8(path) == content
+        mock_builtins_open.assert_called_once_with(path, "r", encoding="utf-8")
+
+
+@pytest.mark.parametrize("make_folders", (True, False))
+def test_write_file_utf8(make_folders: bool):
+    """Should open the file as UTF-8, create folders if instructed, and write"""
+    path: str = "some/path"
+    content: str = "test"
+
+    mock_builtins_open: MagicMock  # IDK why linter doesn't understand this
+    with (
+        patch("builtins.open", mock_open()) as mock_builtins_open,
+        patch("os.makedirs") as mock_makedirs,
+    ):
+        write_file_utf8(path, content, make_folders)
+        mock_builtins_open.assert_called_once_with(path, "w", encoding="utf-8")
+
+        mock_write: MagicMock = mock_builtins_open.return_value.write
+        mock_write.assert_called_once_with(content)
+
+        if make_folders:
+            mock_makedirs.assert_called_once_with("some", exist_ok=True)
+        else:
+            mock_makedirs.assert_not_called()
 
 
 def test_get_folder_size():
