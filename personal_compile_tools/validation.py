@@ -1,4 +1,4 @@
-"""Checks to help ensure current env is in a valid state"""
+"""Checks to help ensure current environment is in a valid state."""
 
 import os
 
@@ -7,9 +7,17 @@ if os.name == "nt":
 
 
 def is_root() -> bool:
-    """OS Agnostic way to check if current context is root"""
+    """OS Agnostic way to check if current context is root."""
 
     if os.name == "nt":
         return ctypes.windll.shell32.IsUserAnAdmin() != 0  # type: ignore
 
     return os.geteuid() == 0  # type: ignore
+
+
+def raise_if_not_root(message: str) -> None:
+    """Raises if current context isn't root.
+
+    :raises PermissionError: if not root."""
+    if not is_root():
+        raise PermissionError(message)
