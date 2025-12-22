@@ -41,6 +41,23 @@ def delete_folders(folders: Iterable[str]) -> None:
         shutil.rmtree(folder, ignore_errors=True)
 
 
+def read_file_utf8(path: str) -> str:
+    """Reads a UTF-8 file and returns its contents"""
+    with open(path, "r", encoding="utf-8") as fp:
+        return fp.read()
+
+
+def write_file_utf8(path: str, content: str, make_folders: bool = False) -> None:
+    """Writes content to a UTF-8 file. If make_folders, also attempts to make any
+    folders along the path that don't exist"""
+
+    if make_folders:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    with open(path, "w", encoding="utf-8") as fp:
+        fp.write(content)
+
+
 def get_folder_size(folder: str) -> int:
     """Sums all files in folder and sub-folders"""
     return sum(os.stat(file).st_size for file in walk_folder(folder))
