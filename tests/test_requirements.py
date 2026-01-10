@@ -353,7 +353,7 @@ def test_arbitrary_equality_operator(
 def test_direct_reference_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     rule = VersionRule(Operators.DIRECT_REFERENCE, version)
 
@@ -378,7 +378,7 @@ def test_direct_reference_operator(
     ],
 )
 def test_version_is_pep440_compliant(version: str, expected_compliance: bool):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     assert version_is_pep440_compliant(version) is expected_compliance
 
@@ -388,7 +388,7 @@ def test_version_is_pep440_compliant(version: str, expected_compliance: bool):
     [("1.4.5", True), ("2.0.0", False), ("1.2.3", True), ("1.2.2", False)],
 )
 def test_matches_installed_version(installed_version: str, expected_compliance: bool):
-    """Should ensure installed version complies with all rules"""
+    """Should ensure installed version complies with all rules."""
     requirement = Requirement(
         "asdf", [VersionRule(">=", "1.2.3"), VersionRule("<", "2.0.0")]
     )
@@ -412,7 +412,7 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
     ],
 )
 def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
-    """Should ensure installed version complies with all rules"""
+    """Should ensure installed version complies with all rules."""
     as_class = Requirement(name, [VersionRule(op, v) for op, v in operator_and_version])
 
     expected_result: str = name + "".join(op + v for op, v in operator_and_version)
@@ -421,7 +421,7 @@ def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
 
 
 @pytest.mark.parametrize(
-    "input_version,expected_version",
+    ("input_version", "expected_version"),
     [
         ("1-alpha2-post3-dev4", "1a2.post3.dev4"),
         ("6.08_beta0_post1_dev2", "6.8b0.post1.dev2"),
@@ -429,6 +429,6 @@ def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
     ],
 )
 def test_normalize_version(input_version: str, expected_version: str):
-    """Should ensure installed version complies with all rules"""
+    """Should ensure installed version complies with all rules."""
 
     assert normalize_version(input_version) == expected_version

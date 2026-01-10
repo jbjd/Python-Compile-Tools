@@ -365,7 +365,7 @@ def parse_requirements_file(
 ) -> list[Requirement]:
     """Given a requirements file, returns a list of
     objects representing the dependencies"""
-    with open(file_path, "r", encoding=encoding) as fp:
+    with open(file_path, encoding=encoding) as fp:
         file_contents: str = fp.read()
 
     return parse_requirements(file_contents)

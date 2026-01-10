@@ -85,7 +85,7 @@ def test_read_file_utf8():
 
     with patch("builtins.open", mock_open(read_data=content)) as mock_builtins_open:
         assert read_file_utf8(path) == content
-        mock_builtins_open.assert_called_once_with(path, "r", encoding="utf-8")
+        mock_builtins_open.assert_called_once_with(path, encoding="utf-8")
 
 
 @pytest.mark.parametrize("make_folders", (True, False))

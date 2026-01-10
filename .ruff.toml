@@ -4,8 +4,16 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-select = ["B", "E", "F", "I", "RSE", "SIM", "W", "YTT"]
-ignore = ["SIM105"]
+select = ["B", "E", "F", "I", "RSE", "SIM", "UP", "W", "YTT"]
+# D202: Newline after doc string
+# FBT001: Bool positional arg
+# SIM105: Slower exception suppression
+ignore = ["D202", "FBT001", "SIM105"]
+
+[lint.extend-per-file-ignores]
+# ANN201: Return type hint
+# S101: Use of assert
+"tests/*" = ["ANN201", "S101"]
 
 [lint.isort]
 known-third-party = ["nuitka"]

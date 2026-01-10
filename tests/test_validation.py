@@ -1,4 +1,4 @@
-"""Tests for the validation module"""
+"""Tests for the validation module."""
 
 from unittest.mock import patch
 
@@ -16,7 +16,9 @@ _is_root_cases: list = [
 ]
 
 
-@pytest.mark.parametrize("os_name,return_value,expected_is_root", _is_root_cases)
+@pytest.mark.parametrize(
+    ("os_name", "return_value", "expected_is_root"), _is_root_cases
+)
 def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
     """Should return correct bool given OS native response code."""
 
@@ -27,7 +29,7 @@ def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
             lambda: return_value,
             create=True,
         ),
-        patch(f"{_MODULE_NAME}.ctypes", create=True),  # Hack for non-windows systems
+        patch(f"{_MODULE_NAME}.ctypes", create=True),  # For non-windows systems
         patch(
             f"{_MODULE_NAME}.ctypes.windll.shell32.IsUserAnAdmin",
             lambda: return_value,
@@ -37,7 +39,7 @@ def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
         assert is_root() is expected_is_root
 
 
-@pytest.mark.parametrize("is_root", (True, False))
+@pytest.mark.parametrize("is_root", [True, False])
 def test_raise_if_not_root(is_root: bool):
     """Should raise PermissionsError if not root."""
 

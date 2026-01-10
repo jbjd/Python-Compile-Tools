@@ -3,7 +3,7 @@ condensed into one file"""
 
 import os
 import shutil
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 
 def copy_file(source: str, destination: str) -> None:
@@ -43,7 +43,7 @@ def delete_folders(folders: Iterable[str]) -> None:
 
 def read_file_utf8(path: str) -> str:
     """Reads a UTF-8 file and returns its contents"""
-    with open(path, "r", encoding="utf-8") as fp:
+    with open(path, encoding="utf-8") as fp:
         return fp.read()
 
 
