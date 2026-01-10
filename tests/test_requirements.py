@@ -29,7 +29,6 @@ def test_parse_requirements_file():
     """Should read a requirements file, handle backslash, and correctly parse it"""
 
     with patch(f"{_MODULE_NAME}.platform.system", lambda: "Windows"):
-
         requirements: list[Requirement] = parse_requirements_file(
             os.path.join(REQUIREMENTS_FOLDER, "requirements.txt")
         )
