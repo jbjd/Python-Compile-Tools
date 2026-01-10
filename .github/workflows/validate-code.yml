@@ -33,11 +33,7 @@ jobs:
         run: pip install -r requirements_dev.txt
 
       - name: Validate
-        run: |
-          chmod +x ./validate.sh
-          ./validate.sh
+        run: make validate
 
       - name: Unit Tests
-        run: |
-          chmod +x ./test.sh
-          ./test.sh
+        run: make test

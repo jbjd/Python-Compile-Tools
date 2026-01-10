@@ -21,9 +21,7 @@ from personal_compile_tools.requirement_operators import (
 _VALID_OPERATOR_RE: str = "|".join(VALID_OPERATORS)
 _VALID_ENV_MARKER_OPERATORS_RE = "|".join(VALID_ENV_MARKER_OPERATORS)
 
-_PEP440_RE: str = (
-    r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
-)
+_PEP440_RE: str = r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
 
 _OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
 _REQUIREMENT_RE: str = (
