@@ -4,7 +4,8 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-extend-select = ["E", "F", "I", "W"]
+select = ["B", "E", "F", "I", "RSE", "SIM", "W", "YTT"]
+ignore = ["SIM105"]
 
 [lint.isort]
 known-third-party = ["nuitka"]

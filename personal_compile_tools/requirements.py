@@ -263,7 +263,8 @@ class VersionRule:
                 if warn_cannot_verify:
                     warnings.warn(
                         f"Can't verify if source at {self._version} matches installed "
-                        f"version {installed_version_parsed}. Assuming {fall_back}"
+                        f"version {installed_version_parsed}. Assuming {fall_back}",
+                        stacklevel=2,
                     )
                 return fall_back
             case "~=":
@@ -325,7 +326,7 @@ class Requirement:
         return (
             self.name == other.name
             and len(self.rules) == len(other.rules)
-            and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))
+            and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))  # noqa: B905
         )
 
     def matches_installed_version(
