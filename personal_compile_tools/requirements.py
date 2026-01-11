@@ -54,15 +54,15 @@ class Version(ABC):
         return self.raw_version
 
     @abstractmethod
-    def __eq__(self, other) -> bool:  # pragma: no cover
+    def __eq__(self, other: object) -> bool:  # pragma: no cover
         pass
 
     @abstractmethod
-    def __gt__(self, other) -> bool:  # pragma: no cover
+    def __gt__(self, other: object) -> bool:  # pragma: no cover
         pass
 
     @abstractmethod
-    def __ge__(self, other) -> bool:  # pragma: no cover
+    def __ge__(self, other: object) -> bool:  # pragma: no cover
         pass
 
     def __hash__(self) -> int:
@@ -89,13 +89,15 @@ class VersionLiteral(Version):
     GT_LT_ERROR_MESSAGE: str = "Literal versions can't compare greater or less then"
     PARTS_ERROR_MESSAGE: str = "Literal versions don't have parts"
 
-    def __eq__(self, other) -> bool:
-        return self.raw_version == other.raw_version
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, VersionLiteral) and self.raw_version == other.raw_version
+        )
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: object) -> bool:
         raise ValueError(self.GT_LT_ERROR_MESSAGE)
 
-    def __ge__(self, other) -> bool:
+    def __ge__(self, other: object) -> bool:
         raise ValueError(self.GT_LT_ERROR_MESSAGE)
 
     def __hash__(self) -> int:
@@ -104,7 +106,7 @@ class VersionLiteral(Version):
     def get_version_parts_len(self) -> int:
         raise ValueError(self.PARTS_ERROR_MESSAGE)
 
-    def compare_parts_up_to(self, other: "VersionLiteral", count: int) -> bool:  # noqa: ARG002
+    def compare_parts_up_to(self, other: Self, count: int) -> bool:  # noqa: ARG002
         raise ValueError(self.PARTS_ERROR_MESSAGE)
 
 
@@ -148,27 +150,36 @@ class VersionPep440(Version):
         )
         super().__init__(raw_version)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return (
-            self.release_version == other.release_version
+            isinstance(other, VersionPep440)
+            and self.release_version == other.release_version
             and self.pre_segment == other.pre_segment
             and self.pre_segment_type == other.pre_segment_type
             and self.post_segment == other.post_segment
             and self.dev_segment == other.dev_segment
         )
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, VersionPep440):
+            return False
+
         if self.release_version != other.release_version:
             return self.release_version > other.release_version
 
-        if self.pre_segment_type != other.pre_segment_type:
-            return self.pre_segment_type > other.pre_segment_type
+        self_segments: tuple[int, int, int] = (
+            self.pre_segment_type,
+            self.pre_segment,
+            self.post_segment,
+        )
+        other_segments: tuple[int, int, int] = (
+            other.pre_segment_type,
+            other.pre_segment,
+            other.post_segment,
+        )
 
-        if self.pre_segment != other.pre_segment:
-            return self.pre_segment > other.pre_segment
-
-        if self.post_segment != other.post_segment:
-            return self.post_segment > other.post_segment
+        if self_segments != other_segments:
+            return self_segments > other_segments
 
         # Weird edge case: presence of dev segment implies and earlier version
         # So consider version greater only if its present. If either version
@@ -179,8 +190,8 @@ class VersionPep440(Version):
 
         return self.dev_segment < other.dev_segment
 
-    def __ge__(self, other) -> bool:
-        return self > other or self == other
+    def __ge__(self, other: object) -> bool:
+        return isinstance(other, VersionPep440) and (self > other or self == other)
 
     def __hash__(self) -> int:
         return super().__hash__()
@@ -234,9 +245,10 @@ class VersionRule:
 
         return rule
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return (
-            self._operator == other._operator
+            isinstance(other, VersionRule)
+            and self._operator == other._operator
             and self._version == other._version
             and self._fuzzy_match == other._fuzzy_match
         )
@@ -342,9 +354,10 @@ class Requirement:
     def __str__(self) -> str:
         return self.name + "".join(map(str, self.rules))
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return (
-            self.name == other.name
+            isinstance(other, Requirement)
+            and self.name == other.name
             and len(self.rules) == len(other.rules)
             and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))  # noqa: B905
         )

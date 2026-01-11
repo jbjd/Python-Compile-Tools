@@ -10,9 +10,9 @@ def is_root() -> bool:
     """OS Agnostic way to check if current context is root."""
 
     if os.name == "nt":
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0  # type: ignore
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
 
-    return os.geteuid() == 0  # type: ignore
+    return os.geteuid() == 0  # type: ignore[attr-defined]
 
 
 def raise_if_not_root(message: str) -> None:
