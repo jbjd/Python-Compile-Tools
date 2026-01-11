@@ -23,34 +23,34 @@ _MODULE_NAME: str = "personal_compile_tools.file_operations"
 
 
 def test_copy_file():
-    """Should call shutil to copy file"""
+    """Should call shutil to copy file."""
     with patch(f"{_MODULE_NAME}.shutil.copy") as mock_copy:
         copy_file("foo", "bar")
         mock_copy.assert_called_once_with("foo", "bar")
 
 
 def test_copy_folder():
-    """Should call shutil to copy folder"""
+    """Should call shutil to copy folder."""
     with patch(f"{_MODULE_NAME}.shutil.copytree") as mock_copy:
         copy_folder("foo", "bar")
         mock_copy.assert_called_once_with("foo", "bar")
 
 
 def test_delete_file():
-    """Should call os.remove to delete file"""
+    """Should call os.remove to delete file."""
     with patch(f"{_MODULE_NAME}.os.remove") as mock_delete:
         delete_file("foo")
         mock_delete.assert_called_once_with("foo")
 
 
 def test_delete_file_not_found():
-    """Should no-op if file not found"""
+    """Should no-op if file not found."""
     with patch(f"{_MODULE_NAME}.os.remove", side_effect=FileNotFoundError):
         delete_file("foo")
 
 
 def test_delete_files():
-    """Should call os.remove to delete each file"""
+    """Should call os.remove to delete each file."""
     with patch(f"{_MODULE_NAME}.os.remove") as mock_delete:
         delete_files(["foo", "bar"])
 
@@ -60,14 +60,14 @@ def test_delete_files():
 
 
 def test_delete_folder():
-    """Should call shutil to delete folder"""
+    """Should call shutil to delete folder."""
     with patch(f"{_MODULE_NAME}.shutil.rmtree") as mock_delete:
         delete_folder("foo")
         mock_delete.assert_called_once_with("foo", ignore_errors=True)
 
 
 def test_delete_folders():
-    """Should call shutil to delete each folder"""
+    """Should call shutil to delete each folder."""
     with patch(f"{_MODULE_NAME}.shutil.rmtree") as mock_delete:
         delete_folders(["foo", "bar"])
 
@@ -79,7 +79,7 @@ def test_delete_folders():
 
 
 def test_read_file_utf8():
-    """Should open the file as UTF-8 and read"""
+    """Should open the file as UTF-8 and read."""
     path: str = "some/path"
     content: str = "test"
 
@@ -90,7 +90,7 @@ def test_read_file_utf8():
 
 @pytest.mark.parametrize("make_folders", [True, False])
 def test_write_file_utf8(make_folders: bool):
-    """Should open the file as UTF-8, create folders if instructed, and write"""
+    """Should open the file as UTF-8, create folders if instructed, and write."""
     path: str = "some/path"
     content: str = "test"
 
@@ -112,7 +112,7 @@ def test_write_file_utf8(make_folders: bool):
 
 
 def test_get_folder_size():
-    """Should get full byte size of folder"""
+    """Should get byte size of folder."""
 
     # Files have \n\r line breaks and seems this causes an OS schism
     expected_byte_size: int = 40 if os.name == "nt" else 37

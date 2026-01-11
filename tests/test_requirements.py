@@ -27,7 +27,7 @@ _MODULE_NAME = "personal_compile_tools.requirements"
 
 
 def test_parse_requirements_file():
-    """Should read a requirements file, handle backslash, and correctly parse it"""
+    """Should read a requirements file, handle backslash, and correctly parse it."""
 
     with patch(f"{_MODULE_NAME}.platform.system", lambda: "Windows"):
         requirements: list[Requirement] = parse_requirements_file(
@@ -60,7 +60,7 @@ def test_parse_requirements_file():
 
 
 def test_parse_env_marker():
-    """Should return True if env markers valid for current env"""
+    """Should return True if env markers valid for current env."""
     env_marker: str = ' platform_system =="Windows"'
 
     with patch(f"{_MODULE_NAME}.platform.system", lambda: "Windows"):
@@ -71,7 +71,7 @@ def test_parse_env_marker():
 
 
 def test_parse_env_marker_bad_input():
-    """Should ignore invalid env markers"""
+    """Should ignore invalid env markers."""
     env_marker: str = ' not_env_marker =="Windows"'
 
     assert parse_env_marker(env_marker)
@@ -87,7 +87,7 @@ def test_parse_env_marker_bad_input():
     ],
 )
 def test_parse_requirement_bad_input(bad_input: str):
-    """Should raise ValueError due to invalid requirement entry"""
+    """Should raise ValueError due to invalid requirement entry."""
 
     with pytest.raises(ValueError):
         parse_requirement(bad_input)
@@ -101,14 +101,14 @@ def test_parse_requirement_bad_input(bad_input: str):
     ],
 )
 def test_version_rule_bad_input(operator: str, version: str):
-    """Should raise ValueError when release version not parsed"""
+    """Should raise ValueError when release version not parsed."""
 
     with pytest.raises(ValueError):
         VersionRule(operator, version)
 
 
 def test_construct_pep440_version_bad_input():
-    """Should raise ValueError when illegal input value combinations present"""
+    """Should raise ValueError when illegal input value combinations present."""
 
     # Specifies pre segment type without a value
     with pytest.raises(ValueError):
@@ -120,7 +120,7 @@ def test_construct_pep440_version_bad_input():
 
 
 def test_bad_comparison():
-    """Should raise ValueError when literal version is compared < or >"""
+    """Should raise ValueError when literal version is compared."""
 
     with pytest.raises(ValueError):
         _ = VersionLiteral("asdf") > VersionLiteral("1.9")
@@ -130,7 +130,7 @@ def test_bad_comparison():
 
 
 def test_bad_compare_parts_up_to():
-    """Should raise ValueError when compare_parts_up_to called on literal version"""
+    """Should raise ValueError when compare_parts_up_to called on literal version."""
 
     with pytest.raises(ValueError):
         VersionLiteral("asdf").compare_parts_up_to(VersionLiteral("asdf"), 1)
@@ -141,7 +141,7 @@ def test_bad_compare_parts_up_to():
     [("asdf", True, 0), ("1.2.3.4", False, 4)],
 )
 def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_count: int):
-    """Should return correct number of parts given type of version"""
+    """Should return correct number of parts given type of version."""
     version = make_version(raw_version, is_literal)
 
     if is_literal:
@@ -166,7 +166,7 @@ def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_coun
 def test_equals_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is equal to version"""
+    """Should return correct bool if installed version is equal to version."""
 
     rule = VersionRule(Operators.EQUALS, version)
 
@@ -186,7 +186,7 @@ def test_equals_operator(
 def test_not_equals_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is not equal to version"""
+    """Should return correct bool if installed version is not equal to version."""
 
     rule = VersionRule(Operators.NOT_EQUALS, version)
 
@@ -212,7 +212,7 @@ def test_not_equals_operator(
 def test_compatible_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version compatible with version rule"""
+    """Should return correct bool if installed version compatible with version rule."""
 
     rule = VersionRule(Operators.COMPATIBLE, version)
 
@@ -238,7 +238,7 @@ def test_fuzzy_match(
     installed_version: str,
     expected_compliance: bool,
 ):
-    """Should return correct bool when fuzzy matching"""
+    """Should return correct bool when fuzzy matching."""
 
     rule = VersionRule(operator, version)
 
@@ -265,7 +265,7 @@ def test_fuzzy_match(
 def test_greater_than_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     rule = VersionRule(Operators.GT, version)
 
@@ -283,7 +283,7 @@ def test_greater_than_operator(
 def test_greater_than_or_equal_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     rule = VersionRule(Operators.GT_OR_EQUALS, version)
 
@@ -302,7 +302,7 @@ def test_greater_than_or_equal_operator(
 def test_less_than_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     rule = VersionRule(Operators.LT, version)
 
@@ -320,7 +320,7 @@ def test_less_than_operator(
 def test_less_than_or_equal_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     rule = VersionRule(Operators.LT_OR_EQUALS, version)
 
@@ -338,7 +338,7 @@ def test_less_than_or_equal_operator(
 def test_arbitrary_equality_operator(
     version: str, installed_version: str, expected_compliance: bool
 ):
-    """Should return correct bool if installed version is greater than version"""
+    """Should return correct bool if installed version is greater than version."""
 
     rule = VersionRule(Operators.ARBITRARY_EQUALITY, version)
 
