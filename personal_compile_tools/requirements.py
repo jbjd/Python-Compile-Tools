@@ -258,6 +258,7 @@ class VersionRule:
             installed_version, is_literal, self._fuzzy_match
         )
 
+        result: bool
         match self._operator:
             case "@":
                 if warn_cannot_verify:
@@ -266,30 +267,37 @@ class VersionRule:
                         f"version {installed_version_parsed}. Assuming {fall_back}",
                         stacklevel=2,
                     )
-                return fall_back
+                result = fall_back
             case "~=":
-                # ~=1.4.5 is same as >=1.4.5,== 1.4.*
+                # ~=1.4.5 is same as >=1.4.5 and ==1.4.*
                 compare_up_to: int = self._version.get_version_parts_len() - 1
 
-                return self._version.compare_parts_up_to(
-                    installed_version_parsed, compare_up_to
-                ) and (installed_version_parsed >= self._version)
+                result = (
+                    self._version.compare_parts_up_to(
+                        installed_version_parsed, compare_up_to
+                    )
+                    and installed_version_parsed >= self._version
+                )
             case ">":
-                return installed_version_parsed > self._version
+                result = installed_version_parsed > self._version
             case ">=":
-                return installed_version_parsed >= self._version
+                result = installed_version_parsed >= self._version
             case "<":
-                return installed_version_parsed < self._version
+                result = installed_version_parsed < self._version
             case "<=":
-                return installed_version_parsed <= self._version
+                result = installed_version_parsed <= self._version
             case "===":
-                return installed_version_parsed == self._version
+                result = installed_version_parsed == self._version
             case "!=":
-                return not self._compare_versions_with_fuzzy_match(
+                result = not self._compare_versions_with_fuzzy_match(
                     installed_version_parsed
                 )
             case _:
-                return self._compare_versions_with_fuzzy_match(installed_version_parsed)
+                result = self._compare_versions_with_fuzzy_match(
+                    installed_version_parsed
+                )
+
+        return result
 
     def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
         """Checks if self == other or if fuzzy match is True, checks
