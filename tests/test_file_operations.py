@@ -158,7 +158,8 @@ def _norm_test_path(path: str) -> str:
     """Normalizes path for comparison against a relative path.
 
     :param path: A path.
-    :returns: A path with working directory removed and slashes normalized."""
+    :returns: A path with working directory removed and slashes normalized.
+    """
 
     normalized_path: str = path.removeprefix(WORKING_DIR)
 

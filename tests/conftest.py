@@ -1,5 +1,6 @@
-"""Common file for pytest framework to define test fixtures, also used to
-define other constants used within tests"""
+"""Common module for pytest framework to define test fixtures, also used to
+define other constants used within tests.
+"""
 
 import os
 
