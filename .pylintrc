@@ -1,6 +1,0 @@
-[MESSAGES CONTROL]
-
-ignore=setup.py,build
-
-disable=line-too-long,  # Checked by ruff
-        no-member,      # Checked by mypy
