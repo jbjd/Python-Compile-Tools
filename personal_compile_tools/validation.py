@@ -13,7 +13,7 @@ def is_root() -> bool:
     """
 
     if os.name == "nt":
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0  # type: ignore[attr-defined]
 
     return os.geteuid() == 0  # type: ignore[attr-defined]
 
