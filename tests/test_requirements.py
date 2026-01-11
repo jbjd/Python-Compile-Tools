@@ -1,4 +1,4 @@
-"""Tests for the requirements module"""
+"""Tests for the requirements module."""
 
 import os
 import warnings

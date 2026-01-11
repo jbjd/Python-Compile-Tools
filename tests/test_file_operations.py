@@ -1,4 +1,4 @@
-"""Tests for the file_operations module"""
+"""Tests for the file_operations module."""
 
 import os
 from unittest.mock import MagicMock, mock_open, patch
@@ -121,15 +121,19 @@ def test_get_folder_size():
 
 
 def test_walk_folder():
-    folders: list[str] = [folder for folder in walk_folder(EXAMPLE_FOLDER)]
+    """Should get all files in folder and subfolders."""
 
-    assert len(folders) == 3
-    assert _norm_test_path(folders[0]) == "/test_folder/and_now_for.txt"
-    assert _norm_test_path(folders[1]) == "/test_folder/subfolder/.hidden"
-    assert _norm_test_path(folders[2]) == "/test_folder/subfolder/foo.txt"
+    files: list[str] = [file for file in walk_folder(EXAMPLE_FOLDER)]
+
+    assert len(files) == 3
+    assert _norm_test_path(files[0]) == "/test_folder/and_now_for.txt"
+    assert _norm_test_path(files[1]) == "/test_folder/subfolder/.hidden"
+    assert _norm_test_path(files[2]) == "/test_folder/subfolder/foo.txt"
 
 
 def test_walk_folder_non_recursive():
+    """Should get all files in folder and not subfolders."""
+
     folders: list[str] = [
         folder for folder in walk_folder(EXAMPLE_FOLDER, recursive=False)
     ]
@@ -139,6 +143,8 @@ def test_walk_folder_non_recursive():
 
 
 def test_walk_folder_with_ignored_folder():
+    """Should get all files in folder, ignoring some subfolders."""
+
     folders: list[str] = [
         folder
         for folder in walk_folder(EXAMPLE_FOLDER, folders_to_ignore=["subfolder"])
@@ -149,4 +155,14 @@ def test_walk_folder_with_ignored_folder():
 
 
 def _norm_test_path(path: str) -> str:
-    return path.removeprefix(WORKING_DIR).replace("\\", "/")
+    """Normalizes path for comparison against a relative path.
+
+    :param path: A path.
+    :returns: A path with working directory removed and slashes normalized."""
+
+    normalized_path: str = path.removeprefix(WORKING_DIR)
+
+    if os.name == "nt":
+        normalized_path = normalized_path.replace("\\", "/")
+
+    return normalized_path

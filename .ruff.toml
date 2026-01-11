@@ -4,7 +4,7 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-select = ["BLE", "B", "COM", "E", "FLY", "F", "I", "PERF", "PLR", "PT", "RSE", "SIM", "S", "UP", "W", "YTT"]
+select = ["BLE", "B", "COM", "D103", "E", "FLY", "F", "I", "PERF", "PLR", "PT", "RSE", "SIM", "S", "UP", "W", "YTT"]
 # D202: Newline after doc string (Less readable)
 # C416: Unnecessary Comprehension (Slower)
 # COM812: Trailing Comma (Only covers single line trailing commas, seems out of place)
