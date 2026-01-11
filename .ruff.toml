@@ -4,7 +4,7 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-select = ["BLE", "B", "COM", "D103", "E", "FLY", "F", "I", "PERF", "PLR", "PT", "PLW", "RSE", "SIM", "S", "TD", "UP", "W", "YTT"]
+select = ["ANN", "BLE", "B", "COM", "D103", "E", "FLY", "F", "I", "PERF", "PLR", "PT", "PLW", "RSE", "SIM", "S", "TD", "UP", "W", "YTT"]
 # D202: Newline after doc string (Less readable)
 # C416: Unnecessary Comprehension (Slower)
 # COM812: Trailing Comma (Only covers single line trailing commas, seems out of place)
@@ -17,7 +17,7 @@ select = ["BLE", "B", "COM", "D103", "E", "FLY", "F", "I", "PERF", "PLR", "PT", 
 # TD002: Missing author in TODO
 # TD003: Missing issue link in TODO
 # TRY003: Avoid specifying long messages outside the exception class (Slower and less clear)
-ignore = ["D202", "C416", "COM812", "EM", "FBT", "FIX", "PLR2004", "PTH", "SIM105", "TD002", "TD003", "TRY003", "D"]
+ignore = ["D202", "C416", "COM812", "EM", "FBT", "FIX", "PLR2004", "PTH", "SIM105", "TD002", "TD003", "TRY003"]
 
 [lint.extend-per-file-ignores]
 # D100: Missing docstring in public module
