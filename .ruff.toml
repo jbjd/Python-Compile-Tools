@@ -4,15 +4,17 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-select = ["BLE", "B", "COM", "D103", "E", "FLY", "F", "I", "PERF", "PLR", "PT", "RSE", "SIM", "S", "UP", "W", "YTT"]
+select = ["BLE", "B", "COM", "D103", "E", "FLY", "F", "I", "PERF", "PLR", "PT", "PLW", "RSE", "SIM", "S", "UP", "W", "YTT"]
 # D202: Newline after doc string (Less readable)
 # C416: Unnecessary Comprehension (Slower)
 # COM812: Trailing Comma (Only covers single line trailing commas, seems out of place)
-# FBT001: Bool positional arg
+# EM: Error messages
+# FBT: Boolean Trap (Slower)
 # PLR2004: Magic value used in comparison
-# PTH118: Don't use os.path.join (Wants slower API used)
+# PTH: Use Pathlib (Wants slower API used)
 # SIM105: Slower exception suppression (Wants slower check used)
-ignore = ["D202", "C416", "COM812", "FBT001", "PLR2004", "PTH118", "SIM105"]
+# TRY003: Avoid specifying long messages outside the exception class (Slower and less clear)
+ignore = ["D202", "C416", "COM812", "EM", "FBT", "PLR2004", "PTH", "SIM105", "TRY003"]
 
 [lint.extend-per-file-ignores]
 # D100: Missing docstring in public module

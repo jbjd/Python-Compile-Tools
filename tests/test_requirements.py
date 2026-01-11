@@ -11,6 +11,7 @@ from personal_compile_tools.requirements import (
     PreSegmentType,
     Requirement,
     VersionLiteral,
+    VersionPep440,
     VersionRule,
     construct_pep440_version,
     make_version,
@@ -433,3 +434,12 @@ def test_normalize_version(input_version: str, expected_version: str):
     """Should ensure installed version complies with all rules."""
 
     assert normalize_version(input_version) == expected_version
+
+
+def test_hashing():
+    """Should hash classes without issue."""
+
+    assert hash(VersionLiteral("a"))
+    assert hash(VersionPep440("1"))
+    assert hash(VersionRule("==", "1"))
+    assert hash(Requirement("a", []))

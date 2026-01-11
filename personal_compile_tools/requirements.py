@@ -47,7 +47,7 @@ class Version(ABC):
 
     __slots__ = ("raw_version",)
 
-    def __init__(self, raw_version: str):
+    def __init__(self, raw_version: str) -> None:
         self.raw_version: str = raw_version
 
     def __str__(self) -> str:
@@ -64,6 +64,9 @@ class Version(ABC):
     @abstractmethod
     def __ge__(self, other) -> bool:  # pragma: no cover
         pass
+
+    def __hash__(self) -> int:
+        return hash(self.raw_version)
 
     @abstractmethod
     def get_version_parts_len(self) -> int:  # pragma: no cover
@@ -95,10 +98,13 @@ class VersionLiteral(Version):
     def __ge__(self, other) -> bool:
         raise ValueError(self.GT_LT_ERROR_MESSAGE)
 
+    def __hash__(self) -> int:
+        return super().__hash__()
+
     def get_version_parts_len(self) -> int:
         raise ValueError(self.PARTS_ERROR_MESSAGE)
 
-    def compare_parts_up_to(self, other: Self, count: int) -> bool:
+    def compare_parts_up_to(self, other: "VersionLiteral", count: int) -> bool:  # noqa: ARG002
         raise ValueError(self.PARTS_ERROR_MESSAGE)
 
 
@@ -107,11 +113,11 @@ class VersionPep440(Version):
     https://peps.python.org/pep-0440/"""
 
     __slots__ = (
-        "release_version",
-        "pre_segment_type",
-        "pre_segment",
-        "post_segment",
         "dev_segment",
+        "post_segment",
+        "pre_segment",
+        "pre_segment_type",
+        "release_version",
     )
 
     def __init__(
@@ -176,6 +182,9 @@ class VersionPep440(Version):
     def __ge__(self, other) -> bool:
         return self > other or self == other
 
+    def __hash__(self) -> int:
+        return super().__hash__()
+
     def get_version_parts_len(self) -> int:
         return len(self.release_version)
 
@@ -231,6 +240,9 @@ class VersionRule:
             and self._version == other._version
             and self._fuzzy_match == other._fuzzy_match
         )
+
+    def __hash__(self) -> int:
+        return hash(self._version.raw_version + self._operator + str(self._fuzzy_match))
 
     @property
     def operator(self) -> str:
@@ -336,6 +348,9 @@ class Requirement:
             and len(self.rules) == len(other.rules)
             and all(rule1 == rule2 for rule1, rule2 in zip(self.rules, other.rules))  # noqa: B905
         )
+
+    def __hash__(self) -> int:
+        return hash(self.name + "".join(str(r) for r in self.rules))
 
     def matches_installed_version(
         self, fall_back: bool = True, warn_cannot_verify: bool = True

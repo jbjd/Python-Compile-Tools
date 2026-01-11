@@ -1,7 +1,7 @@
 from importlib import import_module
 
 
-def get_module_file_path(module_name: str):
+def get_module_file_path(module_name: str) -> str:
     """Returns the __file__ attribute of a python module.
     Raises ValueError if __file__ is None."""
     module = import_module(module_name)
