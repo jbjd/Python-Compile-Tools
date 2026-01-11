@@ -93,7 +93,7 @@ def test_parse_requirement_bad_input(bad_input: str):
 
 
 @pytest.mark.parametrize(
-    "operator,version",
+    ("operator", "version"),
     [
         ("=", "1.2.3"),  # = is not an operator
         (">=", "1.2.*"),  # .* can only be used with == or !=
@@ -136,7 +136,8 @@ def test_bad_compare_parts_up_to():
 
 
 @pytest.mark.parametrize(
-    "raw_version,is_literal,expected_count", [("asdf", True, 0), ("1.2.3.4", False, 4)]
+    ("raw_version", "is_literal", "expected_count"),
+    [("asdf", True, 0), ("1.2.3.4", False, 4)],
 )
 def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_count: int):
     """Should return correct number of parts given type of version"""
@@ -150,7 +151,7 @@ def test_get_version_parts_len(raw_version: str, is_literal: bool, expected_coun
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", True),
         ("1", "1.0", True),
@@ -172,7 +173,7 @@ def test_equals_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", False),
         ("1", "1.0", False),
@@ -192,7 +193,7 @@ def test_not_equals_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.8", True),
         ("1.4.5", "1.4.8.6", True),
@@ -218,7 +219,7 @@ def test_compatible_operator(
 
 
 @pytest.mark.parametrize(
-    "operator,version,installed_version,expected_compliance",
+    ("operator", "version", "installed_version", "expected_compliance"),
     [
         (Operators.EQUALS, "1.4.*", "1.4.5", True),
         (Operators.EQUALS, "1.4.*", "1.4.5.1", True),
@@ -244,7 +245,7 @@ def test_fuzzy_match(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", False),
         ("1", "1.0", False),
@@ -271,7 +272,7 @@ def test_greater_than_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", True),
         ("2.post1.dev2", "2.post1.dev0", False),
@@ -289,7 +290,7 @@ def test_greater_than_or_equal_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", False),
         ("1.3", "1.2", True),
@@ -308,7 +309,7 @@ def test_less_than_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", True),
         ("1.dev6", "1.2.dev5", False),
@@ -326,7 +327,7 @@ def test_less_than_or_equal_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("1.4.5", "1.4.5", True),
         ("any-comboOf5tuff", "any-comboOf5tuff", True),
@@ -344,7 +345,7 @@ def test_arbitrary_equality_operator(
 
 
 @pytest.mark.parametrize(
-    "version,installed_version,expected_compliance",
+    ("version", "installed_version", "expected_compliance"),
     [
         ("git+https://github.com/pypa/pip.git@7921be1", "1.4.5", True),
         ("file:///c:/path/to/a/file", "1.4.5", False),
@@ -366,7 +367,7 @@ def test_direct_reference_operator(
 
 
 @pytest.mark.parametrize(
-    "version,expected_compliance",
+    ("version", "expected_compliance"),
     [
         ("1.4.5", True),
         ("1alpha2.dev6", True),
@@ -384,7 +385,7 @@ def test_version_is_pep440_compliant(version: str, expected_compliance: bool):
 
 
 @pytest.mark.parametrize(
-    "installed_version,expected_compliance",
+    ("installed_version", "expected_compliance"),
     [("1.4.5", True), ("2.0.0", False), ("1.2.3", True), ("1.2.2", False)],
 )
 def test_matches_installed_version(installed_version: str, expected_compliance: bool):
@@ -398,7 +399,7 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
 
 
 @pytest.mark.parametrize(
-    "name,operator_and_version",
+    ("name", "operator_and_version"),
     [
         ("asdf", [(Operators.EQUALS, "1.2.3a3.post1.dev6")]),
         ("asdf", [(Operators.EQUALS, "1.2.*")]),

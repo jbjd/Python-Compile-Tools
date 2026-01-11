@@ -4,16 +4,17 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-select = ["BLE", "B", "E", "FLY", "F", "I", "PERF", "RSE", "SIM", "S", "UP", "W", "YTT"]
+select = ["BLE", "B", "COM", "E", "FLY", "F", "I", "PERF", "PT", "RSE", "SIM", "S", "UP", "W", "YTT"]
 # D202: Newline after doc string
+# COM812: Trailing Comma
 # FBT001: Bool positional arg
 # SIM105: Slower exception suppression
-ignore = ["D202", "FBT001", "SIM105"]
+ignore = ["D202", "COM812", "FBT001", "SIM105"]
 
 [lint.extend-per-file-ignores]
 # ANN201: Return type hint
 # S101: Use of assert
-"tests/*" = ["ANN201", "S101"]
+"tests/*" = ["ANN201", "PT011", "S101"]
 
 [lint.isort]
 known-third-party = ["nuitka"]

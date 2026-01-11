@@ -88,7 +88,7 @@ def test_read_file_utf8():
         mock_builtins_open.assert_called_once_with(path, encoding="utf-8")
 
 
-@pytest.mark.parametrize("make_folders", (True, False))
+@pytest.mark.parametrize("make_folders", [True, False])
 def test_write_file_utf8(make_folders: bool):
     """Should open the file as UTF-8, create folders if instructed, and write"""
     path: str = "some/path"
