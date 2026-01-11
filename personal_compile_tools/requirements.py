@@ -1,5 +1,7 @@
 """Classes and functions to help analyze requirements files.
-https://peps.python.org/pep-0508/"""
+
+https://peps.python.org/pep-0508/
+"""
 
 import platform
 import re
@@ -34,7 +36,7 @@ NO_SEGMENT_VALUE: int = -1
 
 
 class PreSegmentType(IntEnum):
-    """Represents pre-release versions in pep440"""
+    """Represents pre-release versions in pep440."""
 
     ALPHA = 0
     BETA = 1
@@ -43,7 +45,7 @@ class PreSegmentType(IntEnum):
 
 
 class Version(ABC):
-    """Base class for representing module versions"""
+    """Base class for representing module versions."""
 
     __slots__ = ("raw_version",)
 
@@ -71,18 +73,21 @@ class Version(ABC):
     @abstractmethod
     def get_version_parts_len(self) -> int:  # pragma: no cover
         """Returns number of parts in the version.
-        e.x. 1.2.3 returns 3"""
+        e.x. 1.2.3 returns 3.
+        """
 
     @abstractmethod
     def compare_parts_up_to(self, other: Self, count: int) -> bool:  # pragma: no cover
         """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
 
-        If count is 2, then check "1.2" == "1.2" """
+        If count is 2, then check "1.2" == "1.2".
+        """
 
 
 class VersionLiteral(Version):
     """Represents a literal version, where equality
-    is strictly checked"""
+    is strictly checked.
+    """
 
     __slots__ = ()
 
@@ -111,8 +116,10 @@ class VersionLiteral(Version):
 
 
 class VersionPep440(Version):
-    """Represents a version as specified in pep440
-    https://peps.python.org/pep-0440/"""
+    """Represents a version as specified in pep440.
+
+    https://peps.python.org/pep-0440/
+    """
 
     __slots__ = (
         "dev_segment",
@@ -204,7 +211,7 @@ class VersionPep440(Version):
 
 
 class VersionRule:
-    """Rule that a package installer must follow e.x. >=1.0.0"""
+    """Rule that a package installer must follow e.x. '>=1.0.0'."""
 
     __slots__ = ("_fuzzy_match", "_operator", "_version")
 
@@ -214,11 +221,9 @@ class VersionRule:
         if operator not in VALID_OPERATORS:
             raise ValueError(f"Invalid operator {operator}")
 
-        if version.endswith(self.FUZZY_MATCH_ENDING):
+        self._fuzzy_match = version.endswith(self.FUZZY_MATCH_ENDING)
+        if self._fuzzy_match:
             version = version[:-2]
-            self._fuzzy_match = True
-        else:
-            self._fuzzy_match = False
 
         if self._fuzzy_match and operator not in (
             Operators.EQUALS,
@@ -275,7 +280,8 @@ class VersionRule:
 
         If compliance can't be verified
         e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
-        fall_back is returned."""
+        fall_back is returned.
+        """
 
         is_literal: bool = self._use_literal_compare()
         installed_version_parsed = make_version(
@@ -327,7 +333,8 @@ class VersionRule:
         """Checks if self == other or if fuzzy match is True, checks
         up to the number of parts in self's version.
 
-        So if self is 1.2 and other is 1.2.3, fuzzy match says "1.2" == "1.2" """
+        So if self is 1.2 and other is 1.2.3, fuzzy match says "1.2" == "1.2".
+        """
 
         # If fuzzy is true, only release version can be set
         if self._fuzzy_match:
@@ -338,12 +345,12 @@ class VersionRule:
         return self._version == other
 
     def _use_literal_compare(self) -> bool:
-        """Returns True if compare should be strictly literal"""
+        """Returns True if compare should be strictly literal."""
         return self._operator in ("===", "@")
 
 
 class Requirement:
-    """Represents a dependency of a python module"""
+    """Represents a dependency of a python module."""
 
     __slots__ = ("name", "rules")
 
@@ -370,11 +377,12 @@ class Requirement:
     ) -> bool:
         """Returns True when this dependency's version rules match the installed
         version in current python interpreter.
-        Raises importlib.metadata.PackageNotFoundError if not present
+        Raises importlib.metadata.PackageNotFoundError if not present.
 
         If compliance can't be verified
         e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
-        fall_back is returned."""
+        fall_back is returned.
+        """
 
         installed_version: str = get_module_version(self.name)
 
@@ -388,7 +396,8 @@ def make_version(
     raw_version: str, is_literal: bool, keep_trailing_zeros: bool = False
 ) -> Version:
     """Returns correct version class based on is_literal.
-    keep_trailing_zeros is only passed if is_literal is False"""
+    keep_trailing_zeros is only passed if is_literal is False.
+    """
     return (
         VersionLiteral(raw_version)
         if is_literal
@@ -400,7 +409,8 @@ def parse_requirements_file(
     file_path: str, encoding: str = "utf-8"
 ) -> list[Requirement]:
     """Given a requirements file, returns a list of
-    objects representing the dependencies"""
+    objects representing the dependencies.
+    """
     with open(file_path, encoding=encoding) as fp:
         file_contents: str = fp.read()
 
@@ -411,11 +421,12 @@ def parse_requirements(
     raw_requirements: str, ignore_based_on_env_marker: bool = True
 ) -> list[Requirement]:
     """Given contents of a requirements file, returns a list of
-    objects representing the dependencies
+    objects representing the dependencies.
 
     If ignore_based_on_env_marker is true, will not include requirements
     that do not match env. Such as excluding "...;platform_system == 'Windows'"
-    when running on Linux"""
+    when running on Linux.
+    """
 
     requirements: list[Requirement] = []
 
@@ -441,7 +452,8 @@ def parse_requirements(
 
 def parse_requirement(requirement: str) -> Requirement:
     """Given a single line of a requirements file, returns
-    data parsed into a Requirements object"""
+    data parsed into a Requirements object.
+    """
     requirement = re.sub(r"(\s+|\\\s*\n)", "", requirement)
 
     search_result = re.search(_REQUIREMENT_RE, requirement, re.IGNORECASE)
@@ -469,10 +481,12 @@ def parse_requirement(requirement: str) -> Requirement:
 
 
 def parse_env_marker(env_markers: str) -> bool:
-    """Parsed an env marker as specified here:
+    """Parses an env marker with pep345 rules.
+
     https://peps.python.org/pep-0345/
 
-    Returns True if marker is valid in current env"""
+    Returns True if marker is valid in current env.
+    """
 
     for env_marker in re.split(r" (or|and) ", env_markers):
         search_result = re.search(_ENV_MARKER_RE, env_marker, re.IGNORECASE)
@@ -509,7 +523,8 @@ def parse_env_marker(env_markers: str) -> bool:
 def env_marker_expr_to_value(expr: str) -> str:
     """Given the expr as part of an env marker,
     update to its value in the current env such as
-    'platform_system' -> 'Windows'"""
+    'platform_system' -> 'Windows'.
+    """
 
     if len(expr) > 1 and expr[0] == expr[-1] and expr[0] in "'\"" and expr[-1] in "'\"":
         # its wrapped in quotes, so its a string
@@ -523,15 +538,19 @@ def env_marker_expr_to_value(expr: str) -> str:
 
 
 def normalize_version(version: str) -> str:
-    """Normalizes version with rules found here:
-    https://peps.python.org/pep-0440/"""
+    """Normalizes version with pep440 rules.
+
+    https://peps.python.org/pep-0440/
+    """
 
     return construct_pep440_version(*parse_pep440_version(version))
 
 
 def version_is_pep440_compliant(version: str) -> bool:
-    """Verifies version against pattern found here:
-    https://peps.python.org/pep-0440/"""
+    """Verifies version with pep440 rules.
+
+    https://peps.python.org/pep-0440/
+    """
 
     return re.match(f"^{_PEP440_RE}$", version, flags=re.IGNORECASE) is not None
 
@@ -545,9 +564,10 @@ def construct_pep440_version(
 ) -> str:
     """Given parts of a pep440 version, return a str
     of the version in the normalized form recommended
-    by pep440
+    by pep440.
 
-    A Segment will be considered absent if its negative"""
+    A Segment will be considered absent if its negative.
+    """
     version: str = version_tuple_to_str(release_version)
 
     if pre_segment < 0 and pre_segment_type != PreSegmentType.NONE:
@@ -583,7 +603,8 @@ def parse_pep440_version(
     pre release segment, post release segment, and
     dev release segment.
 
-    Segments that are missing are given a value of -1"""
+    Segments that are missing are given a value of -1
+    """
     version_search = re.search(_PEP440_RE, raw_version, flags=re.IGNORECASE)
 
     if version_search is None:
@@ -614,7 +635,7 @@ def parse_pep440_version(
 
 
 def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
-    """Returns the type of pre-release based on the parsed segment"""
+    """Returns the type of pre-release based on the parsed segment."""
     if parsed_segment is None:
         return PreSegmentType.NONE
     if parsed_segment.startswith("a"):
@@ -627,7 +648,8 @@ def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
 
 def _get_segment_value(parsed_segment: str | None) -> int:
     """Returns the int value of the parsed segment or -1 if
-    the segment is None"""
+    the segment is None.
+    """
     return (
         int(re.sub("[^0-9]", "", parsed_segment))
         if parsed_segment is not None
