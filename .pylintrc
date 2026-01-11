@@ -2,5 +2,5 @@
 
 ignore=setup.py,build
 
-disable=line-too-long,  # Checked by flake
+disable=line-too-long,  # Checked by ruff
         no-member,      # Checked by mypy
