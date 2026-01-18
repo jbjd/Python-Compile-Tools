@@ -82,7 +82,7 @@ class VersionRule(ABC):  # noqa: PLW1641
 
 class VersionRulePackaging(VersionRule):
     """Rule that a package installer must follow that also complies
-    with packaging.verion.parse rules."""
+    with packaging.version.parse rules."""
 
     __slots__ = ("_fuzzy_match", "_version")
 
