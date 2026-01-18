@@ -33,19 +33,19 @@ def test_parse_requirements_file():
         assert requirements[0] == Requirement(
             "some_module",
             [
-                VersionRule(Operators.GT_OR_EQUALS, "1.2.3"),
-                VersionRule(Operators.LT_OR_EQUALS, "2.0.0"),
+                VersionRulePackaging(Operators.GT_OR_EQUALS, "1.2.3"),
+                VersionRulePackaging(Operators.LT_OR_EQUALS, "2.0.0"),
             ],
         )
 
         assert requirements[1] == Requirement(
-            "o", [VersionRule(Operators.EQUALS, "7.0.8")]
+            "o", [VersionRulePackaging(Operators.EQUALS, "7.0.8")]
         )
 
         assert requirements[2] == Requirement(
             "dir_ref",
             [
-                VersionRule(
+                VersionRuleLiteral(
                     Operators.DIRECT_REFERENCE,
                     "git+https://github.com/jbjd/Compile-Tools@v1.0.0",
                 )
@@ -231,7 +231,8 @@ def test_greater_than_or_equal_operator(
     [
         ("1.4.5", "1.4.5", False),
         ("1.3", "1.2", True),
-        ("7.8.9b1.post2", "7.8.9.dev1", False),
+        ("7.8.9.dev1", "7.8.9.post3", False),
+        ("7.8.9b1.post2", "7.8.9.dev1", True),
         ("7.8.9b1.post2", "7.8.9a0", True),
     ],
 )
@@ -323,6 +324,7 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
     [
         ("asdf", [(Operators.EQUALS, "1.2.3a3.post1.dev6")]),
         ("asdf", [(Operators.EQUALS, "1.2.*")]),
+        ("asdf", [(Operators.DIRECT_REFERENCE, "1.2")]),
         (
             "test-name",
             [
@@ -334,9 +336,11 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
 )
 def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
     """Should ensure installed version complies with all rules."""
-    as_class = Requirement(name, [VersionRule(op, v) for op, v in operator_and_version])
+    unparsed_rules: str = "".join(op + v for op, v in operator_and_version)
 
-    expected_result: str = name + "".join(op + v for op, v in operator_and_version)
+    as_class = Requirement(name, unparsed_rules)
+
+    expected_result: str = name + unparsed_rules
 
     assert str(as_class) == expected_result
 

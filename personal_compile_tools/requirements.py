@@ -6,7 +6,7 @@ https://peps.python.org/pep-0508/
 import platform
 import re
 import warnings
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from importlib.metadata import version as get_module_version
 from typing import override
@@ -23,7 +23,7 @@ from personal_compile_tools.requirement_operators import (
     Operators,
 )
 
-_VALID_OPERATOR_RE: str = "|".join(STANDARD_OPERATORS)
+_VALID_OPERATOR_RE: str = "|".join(STANDARD_OPERATORS + LITERAL_OPERATORS)
 _VALID_ENV_MARKER_OPERATORS_RE = "|".join(VALID_ENV_MARKER_OPERATORS)
 
 _OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
@@ -32,8 +32,6 @@ _REQUIREMENT_RE: str = (
 )
 
 _ENV_MARKER_RE: str = r"^\s*(.+?)(" + _VALID_ENV_MARKER_OPERATORS_RE + r")(.+?)\s*$"
-
-NO_SEGMENT_VALUE: int = -1
 
 
 class VersionRule(ABC):  # noqa: PLW1641
@@ -144,17 +142,16 @@ class VersionRulePackaging(VersionRule):
         result: bool
         match self._operator:
             case "~=":
-                # TODO
-                return False
                 # ~=1.4.5 is same as >=1.4.5 and ==1.4.*
-                # compare_up_to: int = self._version.get_version_parts_len() - 1
+                compare_up_to: int = len(self._version.release) - 1
+                parsed_other_version: Version = _version_parse(version)
 
-                # result = (
-                #     self._version.compare_parts_up_to(
-                #         installed_version_parsed, compare_up_to
-                #     )
-                #     and installed_version_parsed >= self._version
-                # )
+                result = (
+                    self._compare_version_up_to_self(
+                        parsed_other_version, compare_up_to
+                    )
+                    and parsed_other_version >= self._version
+                )
             case ">":
                 result = _version_parse(version) > self._version
             case ">=":
@@ -183,13 +180,18 @@ class VersionRulePackaging(VersionRule):
         if self._fuzzy_match:
             compare_up_to: int = len(self._version.release)
 
-            return (
-                parsed_other_version.epoch == self._version.epoch
-                and parsed_other_version.release[:compare_up_to]
-                == self._version.release
-            )
+            return self._compare_version_up_to_self(parsed_other_version, compare_up_to)
 
         return parsed_other_version == self._version
+
+    def _compare_version_up_to_self(
+        self, other_version: Version, compare_up_to: int
+    ) -> bool:
+        return (
+            other_version.epoch == self._version.epoch
+            and other_version.release[:compare_up_to]
+            == self._version.release[:compare_up_to]
+        )
 
     @staticmethod
     def _version_is_all_numeric(version: str) -> bool:
@@ -343,24 +345,28 @@ def parse_requirement(requirement: str) -> Requirement:
         raise ValueError(f"Invalid requirement {requirement}")
 
     name: str = search_result.group(1)
-    version_rules_unparsed: str = search_result.group(2)
+    unparsed_rules: str = search_result.group(2)
 
-    version_rules: list[VersionRule]
-    if version_rules_unparsed[0] == "@":
-        version_rules = [VersionRule("@", version_rules_unparsed[1:])]
-    else:
-        split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-            _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
-        )
-
-        version_rules = [
-            VersionRuleLiteral(operator, version)
-            if operator == "==="
-            else VersionRulePackaging(operator, version)
-            for operator, version in split_version_rules_unparsed
-        ]
+    version_rules: list[VersionRule] = make_version_rules(unparsed_rules)
 
     return Requirement(name, version_rules)
+
+
+def make_version_rules(unparsed_rules: str) -> list[VersionRule]:
+    """Parses string of rules into list of VersionRule."""
+    if unparsed_rules[0] == "@":
+        return [VersionRuleLiteral("@", unparsed_rules[1:])]
+
+    split_version_rules: list[tuple[str, str]] = re.findall(
+        _OPERATOR_WITH_VERSION_RE, unparsed_rules, flags=re.IGNORECASE
+    )
+
+    return [
+        VersionRuleLiteral(operator, version)
+        if operator == "==="
+        else VersionRulePackaging(operator, version)
+        for operator, version in split_version_rules
+    ]
 
 
 def parse_env_marker(env_markers: str) -> bool:
