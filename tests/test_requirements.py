@@ -11,6 +11,7 @@ from personal_compile_tools.requirements import (
     Requirement,
     VersionRuleLiteral,
     VersionRulePackaging,
+    make_version_rules,
     parse_env_marker,
     parse_requirement,
     parse_requirements_file,
@@ -97,6 +98,7 @@ def test_parse_requirement_bad_input(bad_input: str):
         ("1.post1", "1.dev1", False),
         ("1.4.0.1", "1.4", False),
         ("1.4.5", "1.4.8", False),
+        ("1.0", "1.0.0", True),
     ],
 )
 def test_equals_operator(
@@ -338,7 +340,7 @@ def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
     """Should ensure installed version complies with all rules."""
     unparsed_rules: str = "".join(op + v for op, v in operator_and_version)
 
-    as_class = Requirement(name, unparsed_rules)
+    as_class = Requirement(name, make_version_rules(unparsed_rules))
 
     expected_result: str = name + unparsed_rules
 

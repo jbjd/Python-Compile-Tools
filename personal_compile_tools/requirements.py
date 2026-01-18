@@ -26,7 +26,7 @@ from personal_compile_tools.requirement_operators import (
 _VALID_OPERATOR_RE: str = "|".join(STANDARD_OPERATORS + LITERAL_OPERATORS)
 _VALID_ENV_MARKER_OPERATORS_RE = "|".join(VALID_ENV_MARKER_OPERATORS)
 
-_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
+_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_*]+)"
 _REQUIREMENT_RE: str = (
     r"^([a-z0-9](?:[a-z0-9\._-]*[a-z0-9])?)((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
