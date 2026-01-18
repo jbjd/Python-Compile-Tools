@@ -17,7 +17,7 @@ class Operators(StrEnum):
     DIRECT_REFERENCE = "@"
 
 
-VALID_OPERATORS: list[str] = [
+STANDARD_OPERATORS: list[str] = [
     Operators.EQUALS,
     Operators.NOT_EQUALS,
     Operators.GT,
@@ -25,6 +25,9 @@ VALID_OPERATORS: list[str] = [
     Operators.LT,
     Operators.LT_OR_EQUALS,
     Operators.COMPATIBLE,
+]
+
+LITERAL_OPERATORS: list[str] = [
     Operators.ARBITRARY_EQUALITY,
     Operators.DIRECT_REFERENCE,
 ]

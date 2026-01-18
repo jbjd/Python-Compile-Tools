@@ -7,223 +7,93 @@ import platform
 import re
 import warnings
 from abc import ABC, abstractmethod
-from enum import IntEnum
+from collections.abc import Iterable
 from importlib.metadata import version as get_module_version
-from typing import Self
+from typing import override
 
-from personal_compile_tools.converters import version_str_to_tuple, version_tuple_to_str
+from packaging.version import InvalidVersion, Version
+from packaging.version import parse as _version_parse
+
 from personal_compile_tools.requirement_operators import (
+    LITERAL_OPERATORS,
+    STANDARD_OPERATORS,
     VALID_ENV_MARKER_OPERATORS,
-    VALID_OPERATORS,
     EnvMarkerExprs,
     EnvMarkerOperators,
     Operators,
 )
 
-_VALID_OPERATOR_RE: str = "|".join(VALID_OPERATORS)
+_VALID_OPERATOR_RE: str = "|".join(STANDARD_OPERATORS + LITERAL_OPERATORS)
 _VALID_ENV_MARKER_OPERATORS_RE = "|".join(VALID_ENV_MARKER_OPERATORS)
 
-_PEP440_RE: str = r"^([0-9]+(?:\.[0-9]+)*)(?:(?:\.|-|_)?((?:alpha|a|beta|b|rc|c)[0-9]+))?((?:\.|-|_)?post[0-9]+)?((?:\.|-|_)?dev[0-9]+)?$"  # noqa: E501
-
-_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_]+)"
+_OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_*]+)"
 _REQUIREMENT_RE: str = (
     r"^([a-z0-9](?:[a-z0-9\._-]*[a-z0-9])?)((?:" + _VALID_OPERATOR_RE + r").+)$"
 )
 
 _ENV_MARKER_RE: str = r"^\s*(.+?)(" + _VALID_ENV_MARKER_OPERATORS_RE + r")(.+?)\s*$"
 
-NO_SEGMENT_VALUE: int = -1
 
+class VersionRule(ABC):  # noqa: PLW1641
+    """Base class for representing version rules."""
 
-class PreSegmentType(IntEnum):
-    """Represents pre-release versions in pep440."""
+    __slots__ = ("_operator",)
 
-    ALPHA = 0
-    BETA = 1
-    CANDIDATE = 2
-    NONE = 3
+    def __init__(self, operator: str, valid_operators: Iterable[str]) -> None:
+        self._raise_if_operator_invalid(operator, valid_operators)
+        self._operator: str = operator
 
-
-class Version(ABC):
-    """Base class for representing module versions."""
-
-    __slots__ = ("raw_version",)
-
-    def __init__(self, raw_version: str) -> None:
-        self.raw_version: str = raw_version
-
-    def __str__(self) -> str:
-        return self.raw_version
+    @abstractmethod
+    def __str__(self) -> str:  # pragma: no cover
+        pass
 
     @abstractmethod
     def __eq__(self, other: object) -> bool:  # pragma: no cover
         pass
 
+    @property
+    def operator(self) -> str:
+        return self._operator
+
+    @property
     @abstractmethod
-    def __gt__(self, other: object) -> bool:  # pragma: no cover
+    def version(self) -> str:  # pragma: no cover
         pass
 
     @abstractmethod
-    def __ge__(self, other: object) -> bool:  # pragma: no cover
-        pass
+    def version_is_compliant(
+        self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True
+    ) -> bool:
+        """Returns True if provided version is compliant with the rule
+        this object represents.
 
-    def __hash__(self) -> int:
-        return hash(self.raw_version)
-
-    @abstractmethod
-    def get_version_parts_len(self) -> int:  # pragma: no cover
-        """Returns number of parts in the version.
-        e.x. 1.2.3 returns 3.
+        If compliance can't be verified
+        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
+        fall_back is returned.
         """
 
-    @abstractmethod
-    def compare_parts_up_to(self, other: Self, count: int) -> bool:  # pragma: no cover
-        """Given version like 1.2.3 and 1.2.4, only compare up to count number of parts.
-
-        If count is 2, then check "1.2" == "1.2".
-        """
-
-
-class VersionLiteral(Version):
-    """Represents a literal version, where equality
-    is strictly checked.
-    """
-
-    __slots__ = ()
-
-    GT_LT_ERROR_MESSAGE: str = "Literal versions can't compare greater or less then"
-    PARTS_ERROR_MESSAGE: str = "Literal versions don't have parts"
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, VersionLiteral) and self.raw_version == other.raw_version
-        )
-
-    def __gt__(self, other: object) -> bool:
-        raise ValueError(self.GT_LT_ERROR_MESSAGE)
-
-    def __ge__(self, other: object) -> bool:
-        raise ValueError(self.GT_LT_ERROR_MESSAGE)
-
-    def __hash__(self) -> int:
-        return super().__hash__()
-
-    def get_version_parts_len(self) -> int:
-        raise ValueError(self.PARTS_ERROR_MESSAGE)
-
-    def compare_parts_up_to(self, other: Self, count: int) -> bool:  # noqa: ARG002
-        raise ValueError(self.PARTS_ERROR_MESSAGE)
-
-
-class VersionPep440(Version):
-    """Represents a version as specified in pep440.
-
-    https://peps.python.org/pep-0440/
-    """
-
-    __slots__ = (
-        "dev_segment",
-        "post_segment",
-        "pre_segment",
-        "pre_segment_type",
-        "release_version",
-    )
-
-    def __init__(
-        self,
-        raw_version: str,
-        keep_trailing_zeros: bool = False,
+    @staticmethod
+    def _raise_if_operator_invalid(
+        operator: str, valid_operators: Iterable[str]
     ) -> None:
-        self.release_version: tuple[int, ...]
-        self.pre_segment_type: PreSegmentType
-        self.pre_segment: int
-        self.post_segment: int
-        self.dev_segment: int
-
-        (
-            self.release_version,
-            self.pre_segment_type,
-            self.pre_segment,
-            self.post_segment,
-            self.dev_segment,
-        ) = parse_pep440_version(raw_version, keep_trailing_zeros)
-
-        raw_version = construct_pep440_version(
-            self.release_version,
-            self.pre_segment_type,
-            self.pre_segment,
-            self.post_segment,
-            self.dev_segment,
-        )
-        super().__init__(raw_version)
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, VersionPep440)
-            and self.release_version == other.release_version
-            and self.pre_segment == other.pre_segment
-            and self.pre_segment_type == other.pre_segment_type
-            and self.post_segment == other.post_segment
-            and self.dev_segment == other.dev_segment
-        )
-
-    def __gt__(self, other: object) -> bool:
-        if not isinstance(other, VersionPep440):
-            return False
-
-        if self.release_version != other.release_version:
-            return self.release_version > other.release_version
-
-        self_segments: tuple[int, int, int] = (
-            self.pre_segment_type,
-            self.pre_segment,
-            self.post_segment,
-        )
-        other_segments: tuple[int, int, int] = (
-            other.pre_segment_type,
-            other.pre_segment,
-            other.post_segment,
-        )
-
-        if self_segments != other_segments:
-            return self_segments > other_segments
-
-        # Weird edge case: presence of dev segment implies and earlier version
-        # So consider version greater only if its present. If either version
-        # was missing the dev segment, we need to consider it "greater"
-        # for having a lesser value
-        if self.dev_segment >= 0 and other.dev_segment >= 0:
-            return self.dev_segment > other.dev_segment
-
-        return self.dev_segment < other.dev_segment
-
-    def __ge__(self, other: object) -> bool:
-        return isinstance(other, VersionPep440) and (self > other or self == other)
-
-    def __hash__(self) -> int:
-        return super().__hash__()
-
-    def get_version_parts_len(self) -> int:
-        return len(self.release_version)
-
-    def compare_parts_up_to(self, other: Self, count: int) -> bool:
-        return self.release_version[:count] == other.release_version[:count]
+        if operator not in valid_operators:
+            raise ValueError(f"Invalid operator {operator}")
 
 
-class VersionRule:
-    """Rule that a package installer must follow e.x. '>=1.0.0'."""
+class VersionRulePackaging(VersionRule):
+    """Rule that a package installer must follow that also complies
+    with packaging.version.parse rules."""
 
-    __slots__ = ("_fuzzy_match", "_operator", "_version")
+    __slots__ = ("_fuzzy_match", "_version")
 
     FUZZY_MATCH_ENDING: str = ".*"
 
     def __init__(self, operator: str, version: str) -> None:
-        if operator not in VALID_OPERATORS:
-            raise ValueError(f"Invalid operator {operator}")
-
         self._fuzzy_match = version.endswith(self.FUZZY_MATCH_ENDING)
         if self._fuzzy_match:
             version = version[:-2]
+            if not self._version_is_all_numeric(version):
+                raise InvalidVersion(".* can't be used with segments")
 
         if self._fuzzy_match and operator not in (
             Operators.EQUALS,
@@ -231,16 +101,15 @@ class VersionRule:
         ):
             raise ValueError(".* can only be used with '==' or '!=' operators")
 
-        self._operator: str = operator
+        self._version: Version = _version_parse(version)
 
-        is_literal: bool = self._use_literal_compare()
-        self._version: Version = make_version(version, is_literal, self._fuzzy_match)
-
-        if self._operator == "~=" and self._version.get_version_parts_len() < 2:
+        if operator == "~=" and len(self._version.release) < 2:
             raise ValueError(
                 "Use of '~=' operator requires release version to have "
                 f"more than one segment, {self._version} has only one"
             )
+
+        super().__init__(operator, STANDARD_OPERATORS)
 
     def __str__(self) -> str:
         rule: str = f"{self._operator}{self._version}"
@@ -252,101 +121,128 @@ class VersionRule:
 
     def __eq__(self, other: object) -> bool:
         return (
-            isinstance(other, VersionRule)
+            isinstance(other, VersionRulePackaging)
             and self._operator == other._operator
             and self._version == other._version
             and self._fuzzy_match == other._fuzzy_match
         )
 
     def __hash__(self) -> int:
-        return hash(self._version.raw_version + self._operator + str(self._fuzzy_match))
+        return hash(str(self._version) + self._operator + str(self._fuzzy_match))
 
     @property
-    def operator(self) -> str:
-        return self._operator
+    @override
+    def version(self) -> str:
+        return str(self._version)
 
-    @property
-    def version(self) -> Version:
-        return self._version
-
+    @override
     def version_is_compliant(
-        self,
-        installed_version: str,
-        fall_back: bool = True,
-        warn_cannot_verify: bool = True,
+        self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True
     ) -> bool:
-        """Returns True if provided version is compliant with the rule
-        this object represents.
-
-        If compliance can't be verified
-        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
-        fall_back is returned.
-        """
-
-        is_literal: bool = self._use_literal_compare()
-        installed_version_parsed = make_version(
-            installed_version, is_literal, self._fuzzy_match
-        )
-
         result: bool
         match self._operator:
-            case "@":
-                if warn_cannot_verify:
-                    warnings.warn(
-                        f"Can't verify if source at {self._version} matches installed "
-                        f"version {installed_version_parsed}. Assuming {fall_back}",
-                        stacklevel=2,
-                    )
-                result = fall_back
             case "~=":
                 # ~=1.4.5 is same as >=1.4.5 and ==1.4.*
-                compare_up_to: int = self._version.get_version_parts_len() - 1
+                compare_up_to: int = len(self._version.release) - 1
+                parsed_other_version: Version = _version_parse(version)
 
                 result = (
-                    self._version.compare_parts_up_to(
-                        installed_version_parsed, compare_up_to
+                    self._compare_version_up_to_self(
+                        parsed_other_version, compare_up_to
                     )
-                    and installed_version_parsed >= self._version
+                    and parsed_other_version >= self._version
                 )
             case ">":
-                result = installed_version_parsed > self._version
+                result = _version_parse(version) > self._version
             case ">=":
-                result = installed_version_parsed >= self._version
+                result = _version_parse(version) >= self._version
             case "<":
-                result = installed_version_parsed < self._version
+                result = _version_parse(version) < self._version
             case "<=":
-                result = installed_version_parsed <= self._version
-            case "===":
-                result = installed_version_parsed == self._version
+                result = _version_parse(version) <= self._version
             case "!=":
-                result = not self._compare_versions_with_fuzzy_match(
-                    installed_version_parsed
-                )
+                result = not self._compare_versions_with_fuzzy_match(version)
             case _:
-                result = self._compare_versions_with_fuzzy_match(
-                    installed_version_parsed
-                )
+                result = self._compare_versions_with_fuzzy_match(version)
 
         return result
 
-    def _compare_versions_with_fuzzy_match(self, other: Version) -> bool:
+    def _compare_versions_with_fuzzy_match(self, other_version: str) -> bool:
         """Checks if self == other or if fuzzy match is True, checks
         up to the number of parts in self's version.
 
         So if self is 1.2 and other is 1.2.3, fuzzy match says "1.2" == "1.2".
         """
 
+        parsed_other_version = _version_parse(other_version)
+
         # If fuzzy is true, only release version can be set
         if self._fuzzy_match:
-            compare_up_to: int = self._version.get_version_parts_len()
+            compare_up_to: int = len(self._version.release)
 
-            return self._version.compare_parts_up_to(other, compare_up_to)
+            return self._compare_version_up_to_self(parsed_other_version, compare_up_to)
 
-        return self._version == other
+        return parsed_other_version == self._version
 
-    def _use_literal_compare(self) -> bool:
-        """Returns True if compare should be strictly literal."""
-        return self._operator in ("===", "@")
+    def _compare_version_up_to_self(
+        self, other_version: Version, compare_up_to: int
+    ) -> bool:
+        return (
+            other_version.epoch == self._version.epoch
+            and other_version.release[:compare_up_to]
+            == self._version.release[:compare_up_to]
+        )
+
+    @staticmethod
+    def _version_is_all_numeric(version: str) -> bool:
+        return all(c.isdigit() for c in version.split("."))
+
+
+class VersionRuleLiteral(VersionRule):
+    """Rule that a package installer must follow with literal check."""
+
+    __slots__ = ("_version",)
+
+    def __init__(self, operator: str, version: str) -> None:
+        super().__init__(operator, LITERAL_OPERATORS)
+        self._version: str = version
+
+    def __str__(self) -> str:
+        return f"{self._operator}{self._version}"
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, VersionRuleLiteral)
+            and self._operator == other._operator
+            and self._version == other._version
+        )
+
+    def __hash__(self) -> int:
+        return hash(self._version + self._operator)
+
+    @property
+    @override
+    def version(self) -> str:
+        return self._version
+
+    @override
+    def version_is_compliant(
+        self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True
+    ) -> bool:
+        result: bool
+        match self._operator:
+            case "@":
+                if warn_cannot_verify:
+                    warnings.warn(
+                        f"Can't verify if source at {self._version} matches installed "
+                        f"version {version}. Assuming {fall_back}",
+                        stacklevel=2,
+                    )
+                result = fall_back
+            case _:
+                result = version == self._version
+
+        return result
 
 
 class Requirement:
@@ -390,19 +286,6 @@ class Requirement:
             rule.version_is_compliant(installed_version, fall_back, warn_cannot_verify)
             for rule in self.rules
         )
-
-
-def make_version(
-    raw_version: str, is_literal: bool, keep_trailing_zeros: bool = False
-) -> Version:
-    """Returns correct version class based on is_literal.
-    keep_trailing_zeros is only passed if is_literal is False.
-    """
-    return (
-        VersionLiteral(raw_version)
-        if is_literal
-        else VersionPep440(raw_version, keep_trailing_zeros)
-    )
 
 
 def parse_requirements_file(
@@ -462,22 +345,28 @@ def parse_requirement(requirement: str) -> Requirement:
         raise ValueError(f"Invalid requirement {requirement}")
 
     name: str = search_result.group(1)
-    version_rules_unparsed: str = search_result.group(2)
+    unparsed_rules: str = search_result.group(2)
 
-    version_rules: list[VersionRule]
-    if version_rules_unparsed[0] == "@":
-        version_rules = [VersionRule("@", version_rules_unparsed[1:])]
-    else:
-        split_version_rules_unparsed: list[tuple[str, str]] = re.findall(
-            _OPERATOR_WITH_VERSION_RE, version_rules_unparsed, flags=re.IGNORECASE
-        )
-
-        version_rules = [
-            VersionRule(operator, version)
-            for operator, version in split_version_rules_unparsed
-        ]
+    version_rules: list[VersionRule] = make_version_rules(unparsed_rules)
 
     return Requirement(name, version_rules)
+
+
+def make_version_rules(unparsed_rules: str) -> list[VersionRule]:
+    """Parses string of rules into list of VersionRule."""
+    if unparsed_rules[0] == "@":
+        return [VersionRuleLiteral("@", unparsed_rules[1:])]
+
+    split_version_rules: list[tuple[str, str]] = re.findall(
+        _OPERATOR_WITH_VERSION_RE, unparsed_rules, flags=re.IGNORECASE
+    )
+
+    return [
+        VersionRuleLiteral(operator, version)
+        if operator == "==="
+        else VersionRulePackaging(operator, version)
+        for operator, version in split_version_rules
+    ]
 
 
 def parse_env_marker(env_markers: str) -> bool:
@@ -535,123 +424,3 @@ def env_marker_expr_to_value(expr: str) -> str:
             return platform.system()
         case _:
             raise ValueError(f"Unknown env var {expr}")
-
-
-def normalize_version(version: str) -> str:
-    """Normalizes version with pep440 rules.
-
-    https://peps.python.org/pep-0440/
-    """
-
-    return construct_pep440_version(*parse_pep440_version(version))
-
-
-def version_is_pep440_compliant(version: str) -> bool:
-    """Verifies version with pep440 rules.
-
-    https://peps.python.org/pep-0440/
-    """
-
-    return re.match(f"^{_PEP440_RE}$", version, flags=re.IGNORECASE) is not None
-
-
-def construct_pep440_version(
-    release_version: tuple[int, ...],
-    pre_segment_type: PreSegmentType = PreSegmentType.NONE,
-    pre_segment: int = NO_SEGMENT_VALUE,
-    post_segment: int = NO_SEGMENT_VALUE,
-    dev_segment: int = NO_SEGMENT_VALUE,
-) -> str:
-    """Given parts of a pep440 version, return a str
-    of the version in the normalized form recommended
-    by pep440.
-
-    A Segment will be considered absent if its negative.
-    """
-    version: str = version_tuple_to_str(release_version)
-
-    if pre_segment < 0 and pre_segment_type != PreSegmentType.NONE:
-        raise ValueError("Must specify a value for pre-release segment if its present")
-
-    if pre_segment >= 0 and pre_segment_type == PreSegmentType.NONE:
-        raise ValueError("Can't have pre-release version number if its not present")
-
-    if pre_segment >= 0:
-        if pre_segment_type == PreSegmentType.ALPHA:
-            version += "a"
-        elif pre_segment_type == PreSegmentType.BETA:
-            version += "b"
-        elif pre_segment_type == PreSegmentType.CANDIDATE:
-            version += "rc"
-
-        version += str(pre_segment)
-
-    if post_segment >= 0:
-        version += f".post{post_segment}"
-
-    if dev_segment >= 0:
-        version += f".dev{dev_segment}"
-
-    return version
-
-
-def parse_pep440_version(
-    raw_version: str, keep_trailing_zeros: bool = False
-) -> tuple[tuple[int, ...], PreSegmentType, int, int, int]:
-    """Given a pep440 compliant version, turn it into its
-    parts. A release version, pre release segment type,
-    pre release segment, post release segment, and
-    dev release segment.
-
-    Segments that are missing are given a value of -1
-    """
-    version_search = re.search(_PEP440_RE, raw_version, flags=re.IGNORECASE)
-
-    if version_search is None:
-        raise ValueError(f"Invalid version {raw_version}")
-
-    release_version_raw: str
-    pre_segment_raw: str | None
-    post_segment_raw: str | None
-    dev_segment_raw: str | None
-    release_version_raw, pre_segment_raw, post_segment_raw, dev_segment_raw = (
-        version_search.groups()
-    )
-
-    release_version = version_str_to_tuple(release_version_raw)
-
-    # 1.0.0 is same as 1 so remove training 0s
-    # Optional to keep them for cases like ~= operator
-    if not keep_trailing_zeros:
-        while len(release_version) > 1 and release_version[-1] == 0:
-            release_version = release_version[:-1]
-
-    pre_segment_type = _get_pre_segment_type(pre_segment_raw)
-    pre_segment = _get_segment_value(pre_segment_raw)
-    post_segment = _get_segment_value(post_segment_raw)
-    dev_segment = _get_segment_value(dev_segment_raw)
-
-    return (release_version, pre_segment_type, pre_segment, post_segment, dev_segment)
-
-
-def _get_pre_segment_type(parsed_segment: str | None) -> PreSegmentType:
-    """Returns the type of pre-release based on the parsed segment."""
-    if parsed_segment is None:
-        return PreSegmentType.NONE
-    if parsed_segment.startswith("a"):
-        return PreSegmentType.ALPHA
-    if parsed_segment.startswith("b"):
-        return PreSegmentType.BETA
-
-    return PreSegmentType.CANDIDATE
-
-
-def _get_segment_value(parsed_segment: str | None) -> int:
-    """Returns the int value of the parsed segment or -1 if
-    the segment is None.
-    """
-    return (
-        int(re.sub("[^0-9]", "", parsed_segment))
-        if parsed_segment is not None
-        else NO_SEGMENT_VALUE
-    )
