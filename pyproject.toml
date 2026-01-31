@@ -5,12 +5,12 @@ authors = [
 name            = "personal-compile-tools"
 readme          = "README.md"
 requires-python = ">=3.12"
-dependencies    = []
-dynamic         = ["version"]
+dynamic         = ["dependencies", "version"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["personal_compile_tools*"]
 
 [tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
 version = {file = "version.txt"}
