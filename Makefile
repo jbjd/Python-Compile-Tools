@@ -4,5 +4,9 @@ validate:
 	mypy . --check-untyped-defs
 	codespell personal_compile_tools setup.py tests .ruff.toml README.md
 
+override PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+export PYTEST_DISABLE_PLUGIN_AUTOLOAD
+
 test:
-	pytest --cov=personal_compile_tools --cov-report term-missing
+	coverage run --source=personal_compile_tools -m pytest
+	@coverage report -m

@@ -7,10 +7,34 @@ readme          = "README.md"
 requires-python = ">=3.12"
 dynamic         = ["dependencies", "version"]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["personal_compile_tools*"]
+[tool.mypy]
+exclude = "build/"
+ignore_missing_imports = true  # Handled by ruff
+disallow_subclassing_any = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_redundant_casts = true
+warn_return_any = false  # All false-positives
+no_implicit_reexport = false
+strict_equality = true
+strict_bytes = true
+extra_checks = true
+
+[[tool.mypy.overrides]]
+module = "tests/*"
+disable_error_code = ["no-untyped-def"]
+
+[tool.pytest]
+pythonpath = ["personal_compile_tools"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = "requirements.txt"}
 version = {file = "version.txt"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["personal_compile_tools*"]
