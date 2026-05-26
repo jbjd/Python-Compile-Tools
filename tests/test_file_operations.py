@@ -1,6 +1,6 @@
 """Tests for the file_operations module."""
 
-import os
+import sys
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -115,7 +115,7 @@ def test_get_folder_size():
     """Should get byte size of folder."""
 
     # Files have \n\r line breaks and seems this causes an OS schism
-    expected_byte_size: int = 40 if os.name == "nt" else 37
+    expected_byte_size: int = 40 if sys.platform == "win32" else 37
 
     assert get_folder_size(EXAMPLE_FOLDER) == expected_byte_size
 
@@ -163,7 +163,7 @@ def _norm_test_path(path: str) -> str:
 
     normalized_path: str = path.removeprefix(WORKING_DIR)
 
-    if os.name == "nt":
+    if sys.platform == "win32":
         normalized_path = normalized_path.replace("\\", "/")
 
     return normalized_path
