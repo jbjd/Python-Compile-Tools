@@ -9,10 +9,10 @@ from personal_compile_tools.validation import is_root, raise_if_not_root
 _MODULE_NAME: str = "personal_compile_tools.validation"
 
 _is_root_cases: list = [
-    ("posix", 0, True),
-    ("posix", 1, False),
-    ("nt", 0, False),
-    ("nt", 1, True),
+    ("linux2", 0, True),
+    ("linux2", 1, False),
+    ("win32", 0, False),
+    ("win32", 1, True),
 ]
 
 
@@ -23,7 +23,8 @@ def test_is_root(os_name: str, return_value: int, expected_is_root: bool):
     """Should return correct bool given OS native response code."""
 
     with (
-        patch(f"{_MODULE_NAME}.os.name", os_name),
+        patch(f"{_MODULE_NAME}.sys.platform", os_name),
+        patch(f"{_MODULE_NAME}.os", create=True),  # For non-linux systems
         patch(
             f"{_MODULE_NAME}.os.geteuid",
             lambda: return_value,

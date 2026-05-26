@@ -76,7 +76,6 @@ def walk_folder(
 
     while folders_to_visit_stack:
         top_folder = folders_to_visit_stack.pop()
-        sub_folders = []
 
         try:
             folder_iter = os.scandir(top_folder)
@@ -97,8 +96,6 @@ def walk_folder(
 
                 if is_folder:
                     if recursive and entry.name not in ignored_folders:
-                        sub_folders.append(entry.path)
+                        folders_to_visit_stack.append(entry.path)
                 else:
                     yield entry.path
-
-        folders_to_visit_stack += sub_folders
