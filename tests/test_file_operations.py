@@ -13,6 +13,7 @@ from personal_compile_tools.file_operations import (
     delete_folder,
     delete_folders,
     get_folder_size,
+    overwrite_folder,
     read_file_utf8,
     walk_folder,
     write_file_utf8,
@@ -76,6 +77,18 @@ def test_delete_folders():
         assert mock_delete.call_args_list[0].kwargs == {"ignore_errors": True}
         assert mock_delete.call_args_list[1].args == ("bar",)
         assert mock_delete.call_args_list[1].kwargs == {"ignore_errors": True}
+
+
+def test_overwrite_folder():
+    """Should call delete on destination and copy from soruce to destination."""
+    with (
+        patch(f"{_MODULE_NAME}.shutil.rmtree") as mock_delete,
+        patch(f"{_MODULE_NAME}.shutil.copytree") as mock_copy,
+    ):
+        overwrite_folder("foo", "bar")
+
+        mock_delete.assert_called_once_with("bar", ignore_errors=True)
+        mock_copy.assert_called_once_with("foo", "bar")
 
 
 def test_read_file_utf8():

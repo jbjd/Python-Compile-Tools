@@ -7,6 +7,7 @@
 - Improvement: Add functions to check if module(s) can be imported
 - Improvement: Add function to read pyproject file
 - Improvement: Add function to check if module is one file
+- Improvement: Add functions to overwrite one folder with another
 
 ## [2.0.1] - 2026-01-31
 
