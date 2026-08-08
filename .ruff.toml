@@ -3,15 +3,18 @@ indent-width = 4
 
 target-version = "py312"
 
+exclude = ["*.ipynb", "test.py"]
+
 [lint]
 select = ["ALL"]
 
-# D202: Newline after doc string (Less readable)
 # C416: Unnecessary Comprehension (Slower)
 # COM812: Trailing Comma (Only covers single line trailing commas, seems out of place)
+# CPY: Copyright
 # D102: Undocumented public method
 # D105: Undocumented magic method
 # D107: Undocumented public __init__
+# D202: Newline after doc string (Less readable)
 # D203: Blank line before class (Incompatible with D211)
 # D205: Missing blank line after summary (Needless whitespace)
 # D209: Multi-line doc string end quote on new line
@@ -28,7 +31,7 @@ select = ["ALL"]
 # TD002: Missing author in TODO
 # TD003: Missing issue link in TODO
 # TRY003: Avoid specifying long messages outside the exception class (Slower and less clear)
-ignore = ["D202", "C416", "COM812", "D102", "D105", "D107", "D203", "D205", "D209", "D213", "D401", "D415", "EM", "FBT", "FIX", "PLR2004", "PTH", "RET505", "SIM105", "TD002", "TD003", "TRY003"]
+ignore = ["C416", "COM812", "CPY", "D102", "D105", "D107", "D202", "D203", "D205", "D209", "D213", "D401", "D415", "EM", "FBT", "FIX", "PLR2004", "PTH", "RET505", "SIM105", "TD002", "TD003", "TRY003"]
 
 [lint.extend-per-file-ignores]
 

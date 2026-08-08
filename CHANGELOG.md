@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-37
+
+- Improvement: Add function to check if module is one file
+
 ## [2.0.1] - 2026-01-31
 
 - [Fix] Fissing `packaging` dependency marker in 2.0.0
