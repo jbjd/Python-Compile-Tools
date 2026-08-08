@@ -28,7 +28,6 @@ def can_import_module(module_name: str) -> bool:
     """Returns if module was able to be imported in current context.
 
     :param module_name: Module to check
-    :param package: Optional package import, equivalent to a from import
     :returns: True if importable, False otherwise
     """
     try:
@@ -37,6 +36,20 @@ def can_import_module(module_name: str) -> bool:
         return False
 
     return True
+
+
+def raise_if_missing_modules(module_names: list[str]) -> bool:
+    """Raises if any module are not able to be imported in current context.
+
+    :param module_names: List of modules to check
+    :raises ModuleNotFoundError: If any are not importable
+    """
+    missing_modules: list[str] = [m for m in module_names if not can_import_module(m)]
+
+    if missing_modules:
+        raise ModuleNotFoundError(
+            "Necessary modules not found: " + ",".join(missing_modules)
+        )
 
 
 def get_module_file_path(module_name: str) -> str:

@@ -3,10 +3,13 @@
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from personal_compile_tools.modules import (
     can_import_module,
     get_module_file_path,
     module_is_one_file,
+    raise_if_missing_modules,
     read_pyproject_file,
 )
 
@@ -22,11 +25,23 @@ def test_read_pyproject_file():
 
 
 def test_can_import_module():
-    """Should correctly determine if a module can be imported."""
+    """Should determine if a module can be imported."""
 
-    assert can_import_module("sys")
     assert can_import_module("os.path")
+    assert can_import_module("sys")
     assert not can_import_module("sys.this does not exist")
+
+
+def test_raise_if_missing_modules():
+    """Should raise if a module can't be imported."""
+
+    raise_if_missing_modules(["os.path", "sys"])
+
+    with pytest.raises(
+        ModuleNotFoundError,
+        match=r"Necessary modules not found: sys\. this does not exist",
+    ):
+        raise_if_missing_modules(["os.path", "sys. this does not exist"])
 
 
 def test_get_module_file_path():

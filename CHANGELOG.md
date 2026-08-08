@@ -4,7 +4,7 @@
 
 ## [2.1.0] - 2026-08-37
 
-- Improvement: Add function to check if module can be imported
+- Improvement: Add functions to check if module(s) can be imported
 - Improvement: Add function to read pyproject file
 - Improvement: Add function to check if module is one file
 
