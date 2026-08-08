@@ -1,10 +1,23 @@
 """Tests for the modules module."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
-from personal_compile_tools.modules import get_module_file_path, module_is_one_file
+from personal_compile_tools.modules import (
+    get_module_file_path,
+    module_is_one_file,
+    read_pyproject_file,
+)
 
 _MODULE_NAME: str = "personal_compile_tools.modules"
+
+
+def test_read_pyproject_file():
+    """Should return file path to module."""
+
+    project: dict[str, Any] = read_pyproject_file()
+
+    assert project["project"]["name"] == "personal-compile-tools"
 
 
 def test_get_module_file_path():

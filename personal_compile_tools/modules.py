@@ -1,6 +1,27 @@
 """Utilities for interacting with modules."""
 
+import os
+import tomllib
 from importlib import import_module
+from typing import Any
+
+PROJECT_FILE_NAME: str = "pyproject.toml"
+
+
+def read_pyproject_file(folder: str | None = None) -> dict[str, Any]:
+    """Returns contents of the pyproject file as dict.
+
+    :param folder: Folder to check, or current working folder if None
+    :returns: Dict of parsed pyproject file
+    :raises OSError: If open fails
+    """
+
+    read_path: str = (
+        PROJECT_FILE_NAME if folder is None else os.path.join(folder, PROJECT_FILE_NAME)
+    )
+
+    with open(read_path, "rb") as fp:
+        return tomllib.load(fp)
 
 
 def get_module_file_path(module_name: str) -> str:
