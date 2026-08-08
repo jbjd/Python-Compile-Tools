@@ -4,6 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from personal_compile_tools.modules import (
+    can_import_module,
     get_module_file_path,
     module_is_one_file,
     read_pyproject_file,
@@ -13,11 +14,19 @@ _MODULE_NAME: str = "personal_compile_tools.modules"
 
 
 def test_read_pyproject_file():
-    """Should return file path to module."""
+    """Should return pyproject data as dict."""
 
     project: dict[str, Any] = read_pyproject_file()
 
     assert project["project"]["name"] == "personal-compile-tools"
+
+
+def test_can_import_module():
+    """Should correctly determine if a module can be imported."""
+
+    assert can_import_module("sys")
+    assert can_import_module("os.path")
+    assert not can_import_module("sys.this does not exist")
 
 
 def test_get_module_file_path():

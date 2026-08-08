@@ -24,6 +24,21 @@ def read_pyproject_file(folder: str | None = None) -> dict[str, Any]:
         return tomllib.load(fp)
 
 
+def can_import_module(module_name: str) -> bool:
+    """Returns if module was able to be imported in current context.
+
+    :param module_name: Module to check
+    :param package: Optional package import, equivalent to a from import
+    :returns: True if importable, False otherwise
+    """
+    try:
+        import_module(module_name)
+    except ModuleNotFoundError:
+        return False
+
+    return True
+
+
 def get_module_file_path(module_name: str) -> str:
     """Returns the __file__ attribute of a python module.
 
