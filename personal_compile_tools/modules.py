@@ -62,7 +62,7 @@ def get_module_file_path(module_name: str) -> str:
     return module.__file__
 
 
-def module_is_one_file(module_name: str) -> str:
+def module_is_one_file(module_name: str) -> bool:
     """Checks if a module is a single file or a folder.
 
     :param module_name: Module to check

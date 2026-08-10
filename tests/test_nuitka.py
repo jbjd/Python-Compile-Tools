@@ -32,5 +32,5 @@ def test_nuitka_not_yet_supports_python_version():
 
     if not_yet_supported:
         assert nuitka_not_yet_supports_python_version(
-            version_str_to_tuple(not_yet_supported[0])
+            version_str_to_tuple(not_yet_supported[0])  # type: ignore[arg-type]
         )
