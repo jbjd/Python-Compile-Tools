@@ -35,5 +35,8 @@ jobs:
       - name: Validate
         run: make validate
 
+      - name: Install Dependencies
+        run: pip install -r requirements_nuitka.txt
+
       - name: Unit Tests
         run: make test

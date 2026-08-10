@@ -40,6 +40,12 @@ def delete_folders(folders: Iterable[str]) -> None:
         shutil.rmtree(folder, ignore_errors=True)
 
 
+def overwrite_folder(source: str, destination: str) -> None:
+    """Overwrites destination folder contents with source folder."""
+    delete_folder(destination)
+    copy_folder(source, destination)
+
+
 def read_file_utf8(path: str) -> str:
     """Reads a UTF-8 file and returns its contents."""
     with open(path, encoding="utf-8") as fp:
