@@ -80,7 +80,7 @@ def test_delete_folders():
 
 
 def test_overwrite_folder():
-    """Should call delete on destination and copy from soruce to destination."""
+    """Should call delete on destination and copy from source to destination."""
     with (
         patch(f"{_MODULE_NAME}.shutil.rmtree") as mock_delete,
         patch(f"{_MODULE_NAME}.shutil.copytree") as mock_copy,
