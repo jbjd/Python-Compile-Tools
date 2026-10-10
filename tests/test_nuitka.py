@@ -8,29 +8,29 @@ try:
     from nuitka import PythonVersions
 
     from personal_compile_tools.nuitka_ext import (
-        nuitka_not_yet_supports_python_version,
+        nuitka_raise_if_unsupported_python_version,
         nuitka_supports_python_version,
     )
 except ModuleNotFoundError:
     pytest.skip("Nuitka not installed", allow_module_level=True)
 
+_supported_version_example: tuple[int, int] = version_str_to_tuple(  # type: ignore[assignment]
+    PythonVersions.getSupportedPythonVersions()[0]
+)
+_unsupported_version_example: tuple[int, int] = (1, 99)
+
 
 def test_nuitka_supports_python_version():
     """Should return true if nuitka supports the version of python."""
 
-    # All versions of nuitka support 2.6 minimum since 1.x
-    assert nuitka_supports_python_version((2, 6))
-    assert not nuitka_supports_python_version((2, 5))
+    assert nuitka_supports_python_version(_supported_version_example)
+    assert not nuitka_supports_python_version(_unsupported_version_example)
 
 
-def test_nuitka_not_yet_supports_python_version():
-    """Should return true if nuitka does not yet support the version of python."""
+def test_nuitka_raise_if_unsupported_python_version():
+    """Should raise if nuitka does not yet support the version of python."""
 
-    assert not nuitka_not_yet_supports_python_version((2, 6))
+    nuitka_raise_if_unsupported_python_version(_supported_version_example)
 
-    not_yet_supported = PythonVersions.getNotYetSupportedPythonVersions()
-
-    if not_yet_supported:
-        assert nuitka_not_yet_supports_python_version(
-            version_str_to_tuple(not_yet_supported[0])  # type: ignore[arg-type]
-        )
+    with pytest.raises(NotImplementedError, match="not supported by Nuitka"):
+        nuitka_raise_if_unsupported_python_version(_unsupported_version_example)

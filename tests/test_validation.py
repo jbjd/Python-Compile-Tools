@@ -4,7 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from personal_compile_tools.validation import is_root, raise_if_not_root
+from personal_compile_tools.validation import (
+    is_root,
+    raise_if_not_root,
+    raise_if_unsupported_python_version_pyproject,
+)
 
 _MODULE_NAME: str = "personal_compile_tools.validation"
 
@@ -52,3 +56,12 @@ def test_raise_if_not_root(is_root: bool):
                 raise_if_not_root(error_message)
         else:
             raise_if_not_root(error_message)
+
+
+def test_raise_if_unsupported_python_version_pyproject():
+    """Should raise if python version is unsupported."""
+
+    raise_if_unsupported_python_version_pyproject((3, 12))
+
+    with pytest.raises(NotImplementedError, match="not supported by this project"):
+        raise_if_unsupported_python_version_pyproject((3, 11))
