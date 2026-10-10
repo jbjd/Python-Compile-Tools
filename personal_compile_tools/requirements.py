@@ -60,6 +60,7 @@ class VersionRule(ABC):  # noqa: PLW1641
     def version(self) -> str:  # pragma: no cover
         pass
 
+    # TODO: Refactor this, no fall_back, no warn_cannot_verify
     @abstractmethod
     def version_is_compliant(
         self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True

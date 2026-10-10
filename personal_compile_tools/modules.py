@@ -2,22 +2,26 @@
 
 import os
 import tomllib
+from functools import lru_cache
 from importlib import import_module
 from typing import Any
 
 PROJECT_FILE_NAME: str = "pyproject.toml"
 
 
-def read_pyproject_file(folder: str | None = None) -> dict[str, Any]:
+@lru_cache
+def read_pyproject_file(project_folder: str | None = None) -> dict[str, Any]:
     """Returns contents of the pyproject file as dict.
 
-    :param folder: Folder to check, or current working folder if None
+    :param project_folder: Folder to check, or current working folder if None
     :returns: Dict of parsed pyproject file
     :raises OSError: If open fails
     """
 
     read_path: str = (
-        PROJECT_FILE_NAME if folder is None else os.path.join(folder, PROJECT_FILE_NAME)
+        PROJECT_FILE_NAME
+        if project_folder is None
+        else os.path.join(project_folder, PROJECT_FILE_NAME)
     )
 
     with open(read_path, "rb") as fp:
