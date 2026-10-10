@@ -23,7 +23,4 @@ def nuitka_raise_if_unsupported_python_version(version: tuple[int, int]) -> None
     :raises NotImplementedError: If `version` is supported"""
 
     if not nuitka_supports_python_version(version):
-        version_str: str = version_tuple_to_str(version)
-        raise NotImplementedError(
-            f"Python version {version_str} not supported by Nuitka"
-        )
+        raise NotImplementedError(f"Python version {version} not supported by Nuitka")

@@ -149,7 +149,7 @@ class VersionRule:
         :direct_reference_handler: Callable taking first the input `version` and second
             the reference version that determines how direct references `@` are handled
         :raises ValueError: If `direct_reference_handler` is None and a
-            direct refernce is encountered."""
+            direct reference is encountered."""
         result: bool
         match self._operator:
             case Operators.COMPATIBLE:
@@ -250,7 +250,7 @@ class Requirement:
         :direct_reference_handler: Callable taking first the input `version` and second
             the reference version that determines how direct references `@` are handled
         :raises ValueError: If `direct_reference_handler` is None and a
-            direct refernce is encountered."""
+            direct reference is encountered."""
 
         installed_version: str = get_module_version(self.name)
 
