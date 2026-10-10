@@ -84,7 +84,7 @@ class VersionRule:
 
         self._operator: str = operator
         self._version: Version | str = (
-            version if self._is_version_literal() else _version_parse(version)
+            version if is_literal_operator(operator) else _version_parse(version)
         )
 
         if operator == "~=" and len(self._version.release) < 2:
@@ -110,7 +110,7 @@ class VersionRule:
         )
 
     def __hash__(self) -> int:
-        if self._is_version_literal():
+        if is_literal_operator(self._operator):
             return hash(self._version + self._operator)
 
         return hash(str(self._version) + self._operator + str(self._fuzzy_match))
@@ -122,12 +122,6 @@ class VersionRule:
     @property
     def version(self) -> str:
         return str(self._version)
-
-    def _is_version_literal(self) -> bool:
-        return self._operator in (
-            Operators.ARBITRARY_EQUALITY,
-            Operators.DIRECT_REFERENCE,
-        )
 
     def version_is_compliant(
         self,
@@ -143,7 +137,7 @@ class VersionRule:
             direct refernce is encountered."""
         result: bool
         match self._operator:
-            case "~=":
+            case Operators.COMPATIBLE:
                 # ~=1.4.5 is same as >=1.4.5 and ==1.4.*
                 compare_up_to: int = len(self._version.release) - 1
                 parsed_other_version: Version = _version_parse(version)
@@ -154,15 +148,15 @@ class VersionRule:
                     )
                     and parsed_other_version >= self._version
                 )
-            case ">":
+            case Operators.GT:
                 result = _version_parse(version) > self._version
-            case ">=":
+            case Operators.GT_OR_EQUALS:
                 result = _version_parse(version) >= self._version
-            case "<":
+            case Operators.LT:
                 result = _version_parse(version) < self._version
-            case "<=":
+            case Operators.LT_OR_EQUALS:
                 result = _version_parse(version) <= self._version
-            case "!=":
+            case Operators.NOT_EQUALS:
                 result = not self._compare_versions_with_fuzzy_match(version)
             case Operators.ARBITRARY_EQUALITY:
                 result = version == self._version
@@ -249,6 +243,17 @@ class Requirement:
             rule.version_is_compliant(installed_version, direct_reference_handler)
             for rule in self.rules
         )
+
+
+def is_literal_operator(operator: Operators) -> bool:
+    """Returns True when `operator` will use literal comparison.
+
+    :param operator: To check
+    :returns: True when literal comparison will be used"""
+    return operator in (
+        Operators.ARBITRARY_EQUALITY,
+        Operators.DIRECT_REFERENCE,
+    )
 
 
 def parse_requirements_file(
