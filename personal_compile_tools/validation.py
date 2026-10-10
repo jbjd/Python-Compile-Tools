@@ -35,7 +35,7 @@ def raise_if_not_root(message: str) -> None:
 
 
 def raise_if_unsupported_python_version_pyproject(
-    python_version: tuple[int, int] | tuple[int, int, int] | None,
+    python_version: tuple[int, int] | tuple[int, int, int] | None = None,
     project_folder: str | None = None,
 ) -> None:
     """Raises NotImplementedError if current python interpreter isn't a supported
