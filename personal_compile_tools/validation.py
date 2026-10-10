@@ -56,7 +56,7 @@ def raise_if_unsupported_python_version_pyproject(
         sys.version_info[:3] if python_version is None else python_version
     )
 
-    if any(not rule.version_is_compliant(used_python, False) for rule in rules):
+    if any(not rule.version_is_compliant(used_python) for rule in rules):
         raise NotImplementedError(
             f"Python version {used_python} not supported by this project. "
             f"Supports {requires}"

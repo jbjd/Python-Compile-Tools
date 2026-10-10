@@ -6,6 +6,7 @@
 
 - [Deprecation] Remove `nuitka_not_yet_supports_python_version`
 - [Deprecation] Move contents of `requirement_operators` module to `requirements`
+- [Deprecation] Merge `VersionRuleLiteral` and `VersionRulePackaging` into `VersionRule`
 - [Improvement] Add functions to validation current python interpreter version
 
 ## [2.1.0] - 2026-08-37

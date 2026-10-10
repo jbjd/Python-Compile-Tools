@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError:
     pytest.skip("Nuitka not installed", allow_module_level=True)
 
-_supported_version_example: tuple[int, int] = version_str_to_tuple(
+_supported_version_example: tuple[int, int] = version_str_to_tuple(  # type: ignore[assignment]
     PythonVersions.getSupportedPythonVersions()[0]
 )
 _unsupported_version_example: tuple[int, int] = (1, 99)

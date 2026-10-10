@@ -5,12 +5,9 @@ https://peps.python.org/pep-0508/
 
 import platform
 import re
-import warnings
-from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Callable
 from enum import StrEnum
 from importlib.metadata import version as get_module_version
-from typing import override
 
 from packaging.version import InvalidVersion, Version
 from packaging.version import parse as _version_parse
@@ -49,23 +46,8 @@ class EnvMarkerExprs(StrEnum):
     PLATFORM_SYS = "platform_system"
 
 
-_STANDARD_OPERATORS: list[str] = [
-    Operators.EQUALS,
-    Operators.NOT_EQUALS,
-    Operators.GT,
-    Operators.GT_OR_EQUALS,
-    Operators.LT,
-    Operators.LT_OR_EQUALS,
-    Operators.COMPATIBLE,
-]
-
-_LITERAL_OPERATORS: list[str] = [
-    Operators.ARBITRARY_EQUALITY,
-    Operators.DIRECT_REFERENCE,
-]
-
-_VALID_OPERATORS: list[str] = _STANDARD_OPERATORS + _LITERAL_OPERATORS
-_VALID_ENV_MARKER_OPERATORS: list[str] = [e for e in EnvMarkerOperators]
+_VALID_OPERATORS: list[str] = [op for op in Operators]
+_VALID_ENV_MARKER_OPERATORS: list[str] = [op for op in EnvMarkerOperators]
 
 
 _VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
@@ -79,62 +61,15 @@ _REQUIREMENT_RE: str = (
 _ENV_MARKER_RE: str = r"^\s*(.+?)(" + _VALID_ENV_MARKER_OPERATORS_RE + r")(.+?)\s*$"
 
 
-class VersionRule(ABC):  # noqa: PLW1641
-    """Base class for representing version rules."""
-
-    __slots__ = ("_operator",)
-
-    def __init__(self, operator: str, valid_operators: Iterable[str]) -> None:
-        self._raise_if_operator_invalid(operator, valid_operators)
-        self._operator: str = operator
-
-    @abstractmethod
-    def __str__(self) -> str:  # pragma: no cover
-        pass
-
-    @abstractmethod
-    def __eq__(self, other: object) -> bool:  # pragma: no cover
-        pass
-
-    @property
-    def operator(self) -> str:
-        return self._operator
-
-    @property
-    @abstractmethod
-    def version(self) -> str:  # pragma: no cover
-        pass
-
-    # TODO: Refactor this, no fall_back, no warn_cannot_verify
-    @abstractmethod
-    def version_is_compliant(
-        self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True
-    ) -> bool:
-        """Returns True if provided version is compliant with the rule
-        this object represents.
-
-        If compliance can't be verified
-        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
-        fall_back is returned.
-        """
-
-    @staticmethod
-    def _raise_if_operator_invalid(
-        operator: str, valid_operators: Iterable[str]
-    ) -> None:
-        if operator not in valid_operators:
-            raise ValueError(f"Invalid operator {operator}")
-
-
-class VersionRulePackaging(VersionRule):
+class VersionRule:
     """Rule that a package installer must follow that also complies
     with packaging.version.parse rules."""
 
-    __slots__ = ("_fuzzy_match", "_version")
+    __slots__ = ("_fuzzy_match", "_operator", "_version")
 
     FUZZY_MATCH_ENDING: str = ".*"
 
-    def __init__(self, operator: str, version: str) -> None:
+    def __init__(self, operator: Operators, version: str) -> None:
         self._fuzzy_match = version.endswith(self.FUZZY_MATCH_ENDING)
         if self._fuzzy_match:
             version = version[:-2]
@@ -147,15 +82,16 @@ class VersionRulePackaging(VersionRule):
         ):
             raise ValueError(".* can only be used with '==' or '!=' operators")
 
-        self._version: Version = _version_parse(version)
+        self._operator: str = operator
+        self._version: Version | str = (
+            version if self._is_version_literal() else _version_parse(version)
+        )
 
         if operator == "~=" and len(self._version.release) < 2:
             raise ValueError(
                 "Use of '~=' operator requires release version to have "
                 f"more than one segment, {self._version} has only one"
             )
-
-        super().__init__(operator, _STANDARD_OPERATORS)
 
     def __str__(self) -> str:
         rule: str = f"{self._operator}{self._version}"
@@ -167,24 +103,44 @@ class VersionRulePackaging(VersionRule):
 
     def __eq__(self, other: object) -> bool:
         return (
-            isinstance(other, VersionRulePackaging)
+            isinstance(other, VersionRule)
             and self._operator == other._operator
             and self._version == other._version
             and self._fuzzy_match == other._fuzzy_match
         )
 
     def __hash__(self) -> int:
+        if self._is_version_literal():
+            return hash(self._version + self._operator)
+
         return hash(str(self._version) + self._operator + str(self._fuzzy_match))
 
     @property
-    @override
+    def operator(self) -> str:
+        return self._operator
+
+    @property
     def version(self) -> str:
         return str(self._version)
 
-    @override
+    def _is_version_literal(self) -> bool:
+        return self._operator in (
+            Operators.ARBITRARY_EQUALITY,
+            Operators.DIRECT_REFERENCE,
+        )
+
     def version_is_compliant(
-        self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True
+        self,
+        version: str,
+        direct_reference_handler: Callable[[str, str], bool] | None = None,
     ) -> bool:
+        """Checks if `version` is compliant with this rule.
+
+        :param version: To check against
+        :direct_reference_handler: Callable taking first the input `version` and second
+            the reference version that determines how direct references `@` are handled
+        :raises ValueError: If `direct_reference_handler` is None and a
+            direct refernce is encountered."""
         result: bool
         match self._operator:
             case "~=":
@@ -208,6 +164,15 @@ class VersionRulePackaging(VersionRule):
                 result = _version_parse(version) <= self._version
             case "!=":
                 result = not self._compare_versions_with_fuzzy_match(version)
+            case Operators.ARBITRARY_EQUALITY:
+                result = version == self._version
+            case Operators.DIRECT_REFERENCE:
+                if direct_reference_handler is None:
+                    raise ValueError(
+                        "Can't determine if direct references are compliant and no "
+                        "handler was passed."
+                    )
+                result = direct_reference_handler(version, self._version)
             case _:
                 result = self._compare_versions_with_fuzzy_match(version)
 
@@ -220,7 +185,7 @@ class VersionRulePackaging(VersionRule):
         So if self is 1.2 and other is 1.2.3, fuzzy match says "1.2" == "1.2".
         """
 
-        parsed_other_version = _version_parse(other_version)
+        parsed_other_version: Version = _version_parse(other_version)
 
         # If fuzzy is true, only release version can be set
         if self._fuzzy_match:
@@ -242,53 +207,6 @@ class VersionRulePackaging(VersionRule):
     @staticmethod
     def _version_is_all_numeric(version: str) -> bool:
         return all(c.isdigit() for c in version.split("."))
-
-
-class VersionRuleLiteral(VersionRule):
-    """Rule that a package installer must follow with literal check."""
-
-    __slots__ = ("_version",)
-
-    def __init__(self, operator: str, version: str) -> None:
-        super().__init__(operator, _LITERAL_OPERATORS)
-        self._version: str = version
-
-    def __str__(self) -> str:
-        return f"{self._operator}{self._version}"
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, VersionRuleLiteral)
-            and self._operator == other._operator
-            and self._version == other._version
-        )
-
-    def __hash__(self) -> int:
-        return hash(self._version + self._operator)
-
-    @property
-    @override
-    def version(self) -> str:
-        return self._version
-
-    @override
-    def version_is_compliant(
-        self, version: str, fall_back: bool = True, warn_cannot_verify: bool = True
-    ) -> bool:
-        result: bool
-        match self._operator:
-            case "@":
-                if warn_cannot_verify:
-                    warnings.warn(
-                        f"Can't verify if source at {self._version} matches installed "
-                        f"version {version}. Assuming {fall_back}",
-                        stacklevel=2,
-                    )
-                result = fall_back
-            case _:
-                result = version == self._version
-
-        return result
 
 
 class Requirement:
@@ -315,21 +233,20 @@ class Requirement:
         return hash(self.name + "".join(str(r) for r in self.rules))
 
     def matches_installed_version(
-        self, fall_back: bool = True, warn_cannot_verify: bool = True
+        self, direct_reference_handler: Callable[[str, str], bool] | None = None
     ) -> bool:
-        """Returns True when this dependency's version rules match the installed
-        version in current python interpreter.
-        Raises importlib.metadata.PackageNotFoundError if not present.
+        """Checks if the installed version of a package is compliant with all rules.
 
-        If compliance can't be verified
-        e.x. a direct version like '@ git+https://github.com/jbjd/Compile-Tools@v1.0.0'
-        fall_back is returned.
-        """
+        :param version: To check against
+        :direct_reference_handler: Callable taking first the input `version` and second
+            the reference version that determines how direct references `@` are handled
+        :raises ValueError: If `direct_reference_handler` is None and a
+            direct refernce is encountered."""
 
         installed_version: str = get_module_version(self.name)
 
         return all(
-            rule.version_is_compliant(installed_version, fall_back, warn_cannot_verify)
+            rule.version_is_compliant(installed_version, direct_reference_handler)
             for rule in self.rules
         )
 
@@ -400,19 +317,14 @@ def parse_requirement(requirement: str) -> Requirement:
 
 def make_version_rules(unparsed_rules: str) -> list[VersionRule]:
     """Parses string of rules into list of VersionRule."""
-    if unparsed_rules[0] == "@":
-        return [VersionRuleLiteral("@", unparsed_rules[1:])]
+    if unparsed_rules[0] == Operators.DIRECT_REFERENCE:
+        return [VersionRule(Operators.DIRECT_REFERENCE, unparsed_rules[1:])]
 
-    split_version_rules: list[tuple[str, str]] = re.findall(
+    split_version_rules: list[tuple[Operators, str]] = re.findall(
         _OPERATOR_WITH_VERSION_RE, unparsed_rules, flags=re.IGNORECASE
     )
 
-    return [
-        VersionRuleLiteral(operator, version)
-        if operator == "==="
-        else VersionRulePackaging(operator, version)
-        for operator, version in split_version_rules
-    ]
+    return [VersionRule(operator, version) for operator, version in split_version_rules]
 
 
 def parse_env_marker(env_markers: str) -> bool:
