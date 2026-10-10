@@ -8,23 +8,68 @@ import re
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from enum import StrEnum
 from importlib.metadata import version as get_module_version
 from typing import override
 
 from packaging.version import InvalidVersion, Version
 from packaging.version import parse as _version_parse
 
-from personal_compile_tools.requirement_operators import (
-    LITERAL_OPERATORS,
-    STANDARD_OPERATORS,
-    VALID_ENV_MARKER_OPERATORS,
-    EnvMarkerExprs,
-    EnvMarkerOperators,
-    Operators,
-)
 
-_VALID_OPERATOR_RE: str = "|".join(STANDARD_OPERATORS + LITERAL_OPERATORS)
-_VALID_ENV_MARKER_OPERATORS_RE = "|".join(VALID_ENV_MARKER_OPERATORS)
+class Operators(StrEnum):
+    """Valid comparison operators that can be used in a requirements file."""
+
+    EQUALS = "=="
+    NOT_EQUALS = "!="
+    GT = ">"
+    GT_OR_EQUALS = ">="
+    LT = "<"
+    LT_OR_EQUALS = "<="
+    COMPATIBLE = "~="
+    ARBITRARY_EQUALITY = "==="
+    DIRECT_REFERENCE = "@"
+
+
+class EnvMarkerOperators(StrEnum):
+    """Valid comparison operators that can be used for env markers
+    in a requirements file.
+    """
+
+    EQUALS = "=="
+    NOT_EQUALS = "!="
+    IN = " in "
+    NOT_IN = " not in "
+
+
+class EnvMarkerExprs(StrEnum):
+    """Valid expressions that can be used for env markers
+    in a requirements file.
+    """
+
+    PLATFORM_SYS = "platform_system"
+
+
+_STANDARD_OPERATORS: list[str] = [
+    Operators.EQUALS,
+    Operators.NOT_EQUALS,
+    Operators.GT,
+    Operators.GT_OR_EQUALS,
+    Operators.LT,
+    Operators.LT_OR_EQUALS,
+    Operators.COMPATIBLE,
+]
+
+_LITERAL_OPERATORS: list[str] = [
+    Operators.ARBITRARY_EQUALITY,
+    Operators.DIRECT_REFERENCE,
+]
+
+_VALID_OPERATORS: list[str] = _STANDARD_OPERATORS + _LITERAL_OPERATORS
+_VALID_ENV_MARKER_OPERATORS: list[str] = [e for e in EnvMarkerOperators]
+
+
+_VALID_OPERATOR_RE: str = "|".join(_VALID_OPERATORS)
+_VALID_ENV_MARKER_OPERATORS_RE = "|".join(_VALID_ENV_MARKER_OPERATORS)
 
 _OPERATOR_WITH_VERSION_RE: str = f"({_VALID_OPERATOR_RE})" + r"([a-z0-9\.\-_*]+)"
 _REQUIREMENT_RE: str = (
@@ -110,7 +155,7 @@ class VersionRulePackaging(VersionRule):
                 f"more than one segment, {self._version} has only one"
             )
 
-        super().__init__(operator, STANDARD_OPERATORS)
+        super().__init__(operator, _STANDARD_OPERATORS)
 
     def __str__(self) -> str:
         rule: str = f"{self._operator}{self._version}"
@@ -205,7 +250,7 @@ class VersionRuleLiteral(VersionRule):
     __slots__ = ("_version",)
 
     def __init__(self, operator: str, version: str) -> None:
-        super().__init__(operator, LITERAL_OPERATORS)
+        super().__init__(operator, _LITERAL_OPERATORS)
         self._version: str = version
 
     def __str__(self) -> str:

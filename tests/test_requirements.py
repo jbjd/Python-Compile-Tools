@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from personal_compile_tools.requirement_operators import Operators
 from personal_compile_tools.requirements import (
+    Operators,
     Requirement,
     VersionRuleLiteral,
     VersionRulePackaging,
