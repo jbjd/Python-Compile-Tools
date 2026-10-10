@@ -65,7 +65,7 @@ class VersionRule:
     """Rule that a package installer must follow that also complies
     with packaging.version.parse rules."""
 
-    __slots__ = ("_fuzzy_match", "_operator", "_version")
+    __slots__ = ("_fuzzy_match", "_operator", "_raw_version", "_version")
 
     FUZZY_MATCH_ENDING: str = ".*"
 
@@ -82,18 +82,25 @@ class VersionRule:
         ):
             raise ValueError(".* can only be used with '==' or '!=' operators")
 
-        self._operator: str = operator
-        self._version: Version | str = (
-            version if is_literal_operator(operator) else _version_parse(version)
-        )
+        self._operator: Operators = operator
+        self._raw_version: str = version
+        self._version: Version
 
-        if operator == "~=" and len(self._version.release) < 2:
-            raise ValueError(
-                "Use of '~=' operator requires release version to have "
-                f"more than one segment, {self._version} has only one"
-            )
+        if is_literal_operator(operator):
+            self._version = Version("0")  # Placeholder
+        else:
+            self._version = _version_parse(version)
+
+            if operator == "~=" and len(self._version.release) < 2:
+                raise ValueError(
+                    "Use of '~=' operator requires release version to have "
+                    f"more than one segment, {self._version} has only one"
+                )
 
     def __str__(self) -> str:
+        if is_literal_operator(self._operator):
+            return f"{self._operator}{self._raw_version}"
+
         rule: str = f"{self._operator}{self._version}"
 
         if self._fuzzy_match:
@@ -105,13 +112,17 @@ class VersionRule:
         return (
             isinstance(other, VersionRule)
             and self._operator == other._operator
-            and self._version == other._version
             and self._fuzzy_match == other._fuzzy_match
+            and (
+                self._raw_version == other._raw_version
+                if is_literal_operator(self._operator)
+                else self._version == other._version
+            )
         )
 
     def __hash__(self) -> int:
         if is_literal_operator(self._operator):
-            return hash(self._version + self._operator)
+            return hash(self._raw_version + self._operator)
 
         return hash(str(self._version) + self._operator + str(self._fuzzy_match))
 
@@ -121,7 +132,11 @@ class VersionRule:
 
     @property
     def version(self) -> str:
-        return str(self._version)
+        return (
+            self._raw_version
+            if is_literal_operator(self._operator)
+            else str(self._version)
+        )
 
     def version_is_compliant(
         self,
@@ -159,14 +174,14 @@ class VersionRule:
             case Operators.NOT_EQUALS:
                 result = not self._compare_versions_with_fuzzy_match(version)
             case Operators.ARBITRARY_EQUALITY:
-                result = version == self._version
+                result = version == self._raw_version
             case Operators.DIRECT_REFERENCE:
                 if direct_reference_handler is None:
                     raise ValueError(
                         "Can't determine if direct references are compliant and no "
                         "handler was passed."
                     )
-                result = direct_reference_handler(version, self._version)
+                result = direct_reference_handler(version, self._raw_version)
             case _:
                 result = self._compare_versions_with_fuzzy_match(version)
 
