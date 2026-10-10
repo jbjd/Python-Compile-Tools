@@ -64,6 +64,26 @@ def write_file_utf8(path: str, content: str, make_folders: bool = False) -> None
         fp.write(content)
 
 
+def find_file_on_path(file: str) -> str:
+    """Finds required file on $PATH. Returns its full path.
+
+    :param file: File name to search for.
+    :returns: Full path to file.
+    :raises FileNotFoundError: If not found"""
+
+    path_env: str = os.environ.get("PATH", "")
+
+    for folder in path_env.split(os.pathsep):
+        if not folder:
+            continue
+
+        target: str = os.path.join(folder, file)
+        if os.path.isfile(target):
+            return target
+
+    raise FileNotFoundError(f"Can't find file {file} on $PATH")
+
+
 def get_folder_size(folder: str) -> int:
     """Sums all files in folder and sub-folders."""
     return sum(os.stat(file).st_size for file in walk_folder(folder))

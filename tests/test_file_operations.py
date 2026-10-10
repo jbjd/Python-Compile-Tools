@@ -1,5 +1,6 @@
 """Tests for the file_operations module."""
 
+import os
 import sys
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -12,6 +13,7 @@ from personal_compile_tools.file_operations import (
     delete_files,
     delete_folder,
     delete_folders,
+    find_file_on_path,
     get_folder_size,
     overwrite_folder,
     read_file_utf8,
@@ -122,6 +124,17 @@ def test_write_file_utf8(make_folders: bool):
             mock_makedirs.assert_called_once_with("some", exist_ok=True)
         else:
             mock_makedirs.assert_not_called()
+
+
+def test_find_file_on_path():
+    """Should return full file path or raises on not found."""
+
+    with patch("os.environ.get", lambda _, __: os.path.dirname(__file__)):
+        assert find_file_on_path(os.path.basename(__file__)) == __file__
+
+        bad_file: str = "asdfasdf.asdf"
+        with pytest.raises(FileNotFoundError, match=f"Can't find file {bad_file}"):
+            find_file_on_path(bad_file)
 
 
 def test_get_folder_size():
