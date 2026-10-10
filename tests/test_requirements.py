@@ -1,16 +1,15 @@
 """Tests for the requirements module."""
 
 import os
-import warnings
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
 
-from personal_compile_tools.requirement_operators import Operators
 from personal_compile_tools.requirements import (
+    Operators,
     Requirement,
-    VersionRuleLiteral,
-    VersionRulePackaging,
+    VersionRule,
     make_version_rules,
     parse_env_marker,
     parse_requirement,
@@ -34,19 +33,19 @@ def test_parse_requirements_file():
         assert requirements[0] == Requirement(
             "some_module",
             [
-                VersionRulePackaging(Operators.GT_OR_EQUALS, "1.2.3"),
-                VersionRulePackaging(Operators.LT_OR_EQUALS, "2.0.0"),
+                VersionRule(Operators.GT_OR_EQUALS, "1.2.3"),
+                VersionRule(Operators.LT_OR_EQUALS, "2.0.0"),
             ],
         )
 
         assert requirements[1] == Requirement(
-            "o", [VersionRulePackaging(Operators.EQUALS, "7.0.8")]
+            "o", [VersionRule(Operators.EQUALS, "7.0.8")]
         )
 
         assert requirements[2] == Requirement(
             "dir_ref",
             [
-                VersionRuleLiteral(
+                VersionRule(
                     Operators.DIRECT_REFERENCE,
                     "git+https://github.com/jbjd/Compile-Tools@v1.0.0",
                 )
@@ -106,7 +105,7 @@ def test_equals_operator(
 ):
     """Should return correct bool if installed version is equal to version."""
 
-    rule = VersionRulePackaging(Operators.EQUALS, version)
+    rule = VersionRule(Operators.EQUALS, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -126,7 +125,7 @@ def test_not_equals_operator(
 ):
     """Should return correct bool if installed version is not equal to version."""
 
-    rule = VersionRulePackaging(Operators.NOT_EQUALS, version)
+    rule = VersionRule(Operators.NOT_EQUALS, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -152,7 +151,7 @@ def test_compatible_operator(
 ):
     """Should return correct bool if installed version compatible with version rule."""
 
-    rule = VersionRulePackaging(Operators.COMPATIBLE, version)
+    rule = VersionRule(Operators.COMPATIBLE, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -171,14 +170,14 @@ def test_compatible_operator(
     ],
 )
 def test_fuzzy_match(
-    operator: str,
+    operator: Operators,
     version: str,
     installed_version: str,
     expected_compliance: bool,
 ):
     """Should return correct bool when fuzzy matching."""
 
-    rule = VersionRulePackaging(operator, version)
+    rule = VersionRule(operator, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -205,7 +204,7 @@ def test_greater_than_operator(
 ):
     """Should return correct bool if installed version is greater than version."""
 
-    rule = VersionRulePackaging(Operators.GT, version)
+    rule = VersionRule(Operators.GT, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -223,7 +222,7 @@ def test_greater_than_or_equal_operator(
 ):
     """Should return correct bool if installed version is greater than version."""
 
-    rule = VersionRulePackaging(Operators.GT_OR_EQUALS, version)
+    rule = VersionRule(Operators.GT_OR_EQUALS, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -243,7 +242,7 @@ def test_less_than_operator(
 ):
     """Should return correct bool if installed version is greater than version."""
 
-    rule = VersionRulePackaging(Operators.LT, version)
+    rule = VersionRule(Operators.LT, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -261,7 +260,7 @@ def test_less_than_or_equal_operator(
 ):
     """Should return correct bool if installed version is greater than version."""
 
-    rule = VersionRulePackaging(Operators.LT_OR_EQUALS, version)
+    rule = VersionRule(Operators.LT_OR_EQUALS, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
@@ -279,31 +278,45 @@ def test_arbitrary_equality_operator(
 ):
     """Should return correct bool if installed version is greater than version."""
 
-    rule = VersionRuleLiteral(Operators.ARBITRARY_EQUALITY, version)
+    rule = VersionRule(Operators.ARBITRARY_EQUALITY, version)
 
     assert rule.version_is_compliant(installed_version) is expected_compliance
 
 
 @pytest.mark.parametrize(
-    ("version", "installed_version", "expected_compliance"),
+    ("version", "installed_version", "direct_reference_handler"),
     [
-        ("git+https://github.com/pypa/pip.git@7921be1", "1.4.5", True),
-        ("file:///c:/path/to/a/file", "1.4.5", False),
+        ("git+https://github.com/pypa/pip.git@7921be1", "1.4.5", None),
+        (
+            "file:///c:/path/to/a/file/1.2.3.txt",
+            "1.2.3",
+            lambda ins, v: ins.endswith(v + ".txt"),
+        ),
+        (
+            "file:///c:/path/to/a/file/1.2.3.txt",
+            "1.2.4",
+            lambda ins, v: ins.endswith(v + ".txt"),
+        ),
     ],
 )
 def test_direct_reference_operator(
-    version: str, installed_version: str, expected_compliance: bool
+    version: str,
+    installed_version: str,
+    direct_reference_handler: Callable[[str, str], bool] | None,
 ):
     """Should return correct bool if installed version is greater than version."""
 
-    rule = VersionRuleLiteral(Operators.DIRECT_REFERENCE, version)
+    rule = VersionRule(Operators.DIRECT_REFERENCE, version)
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", "Can't verify if source at * ")
-        assert (
-            rule.version_is_compliant(installed_version, expected_compliance)
-            is expected_compliance
-        )
+    if direct_reference_handler is None:
+        with pytest.raises(
+            ValueError, match="Can't determine if direct references are compliant"
+        ):
+            rule.version_is_compliant(installed_version, direct_reference_handler)
+    else:
+        assert rule.version_is_compliant(
+            installed_version, direct_reference_handler
+        ) == direct_reference_handler(installed_version, version)
 
 
 @pytest.mark.parametrize(
@@ -314,7 +327,10 @@ def test_matches_installed_version(installed_version: str, expected_compliance: 
     """Should ensure installed version complies with all rules."""
     requirement = Requirement(
         "asdf",
-        [VersionRulePackaging(">=", "1.2.3"), VersionRulePackaging("<", "2.0.0")],
+        [
+            VersionRule(Operators.GT_OR_EQUALS, "1.2.3"),
+            VersionRule(Operators.LT, "2.0.0"),
+        ],
     )
 
     with patch(f"{_MODULE_NAME}.get_module_version", lambda _: installed_version):
@@ -350,6 +366,6 @@ def test_as_str(name: str, operator_and_version: list[tuple[str, str]]):
 def test_hashing():
     """Should hash classes without issue."""
 
-    assert hash(VersionRuleLiteral("===", "1"))
-    assert hash(VersionRulePackaging("==", "1"))
+    assert hash(VersionRule(Operators.ARBITRARY_EQUALITY, "1"))
+    assert hash(VersionRule(Operators.EQUALS, "1"))
     assert hash(Requirement("a", []))
