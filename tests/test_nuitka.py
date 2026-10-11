@@ -26,6 +26,8 @@ def test_nuitka_supports_python_version():
     assert nuitka_supports_python_version(_supported_version_example)
     assert not nuitka_supports_python_version(_unsupported_version_example)
 
+    assert nuitka_supports_python_version()
+
 
 def test_nuitka_raise_if_unsupported_python_version():
     """Should raise if nuitka does not yet support the version of python."""
@@ -34,3 +36,5 @@ def test_nuitka_raise_if_unsupported_python_version():
 
     with pytest.raises(NotImplementedError, match="not supported by Nuitka"):
         nuitka_raise_if_unsupported_python_version(_unsupported_version_example)
+
+    nuitka_raise_if_unsupported_python_version()
