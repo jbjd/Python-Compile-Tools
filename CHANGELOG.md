@@ -5,6 +5,7 @@
 ## [3.1.0] - 2026-10-10
 
 - [Improvement] Add function `find_file_on_path`
+- [Improvement] Allow `nuitka_raise_if_unsupported_python_version` to default to current interpreter
 
 ## [3.0.0] - 2026-10-09
 
