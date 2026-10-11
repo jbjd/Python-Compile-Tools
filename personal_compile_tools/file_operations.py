@@ -65,7 +65,7 @@ def write_file_utf8(path: str, content: str, make_folders: bool = False) -> None
 
 
 def find_file_on_path(file: str) -> str:
-    """Finds required file on $PATH. Returns its full path.
+    """Finds file on $PATH. Returns its full path.
 
     :param file: File name to search for.
     :returns: Full path to file.
